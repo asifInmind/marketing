@@ -187,6 +187,38 @@ function FlatAdsDashboardContent() {
           </p>
         </header>
 
+
+        {/* uncomment this for dynamic insigts data  */}
+{/* {selectedInsights && !Array.isArray(selectedInsights) && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl p-4 shadow-sm border">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
+                <EyeIcon className="w-4 h-4" /> Impressions
+              </div>
+              <p className="text-xl font-bold text-gray-900">{formatNumber(selectedInsights.impressions || 0)}</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm border">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
+                <CursorArrowRaysIcon className="w-4 h-4" /> Clicks
+              </div>
+              <p className="text-xl font-bold text-gray-900">{formatNumber(selectedInsights.clicks || 0)}</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm border">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
+                <ChartBarIcon className="w-4 h-4" /> CTR
+              </div>
+              <p className="text-xl font-bold text-gray-900">{selectedInsights.ctr || '0%'}</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 shadow-sm border">
+              <div className="flex items-center gap-2 text-gray-500 text-xs">
+                <CurrencyDollarIcon className="w-4 h-4" /> Spend
+              </div>
+              <p className="text-xl font-bold text-gray-900">{formatCurrency(selectedInsights.spend || 0)}</p>
+            </div>
+          </div>
+        )}
+         */}
+
         {/* Stats Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-xl p-4 shadow-sm text-center">
