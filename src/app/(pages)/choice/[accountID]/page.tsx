@@ -1,12 +1,13 @@
 'use client';
 
 import { useSearchParams, useParams, useRouter } from 'next/navigation';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { Ad, AdSet, Campaign, Insight } from '../../../../Types/index';
 import { InsightsTables } from '../../../../components/InsightsTable/InsightsTable';
 import FlatAdsDashboard from '../../../(newpages)/dashboard/page';
 
-export default function DashboardPage() {
+// ✅ This component contains the actual logic with useSearchParams
+function DashboardContent() {
     const { accountID } = useParams();
     const searchParams = useSearchParams();
     const accessToken = searchParams.get('access_token') ?? '';
@@ -22,6 +23,7 @@ export default function DashboardPage() {
     const [expandedAdsets, setExpandedAdsets] = useState<Record<string, Insight[]>>({});
     const [expandedAds, setExpandedAds] = useState<Record<string, Insight[]>>({});
     const router = useRouter();
+
     const fetchData = async (url: string, setter: Function, enrichWithCampaigns = false) => {
         try {
             const res = await fetch(url);
@@ -171,5 +173,23 @@ export default function DashboardPage() {
             <FlatAdsDashboard/>
         </div>
         </>
+    );
+}
+
+// ✅ Default export with Suspense boundary
+export default function DashboardPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-500 mx-auto"></div>
+                        <p className="mt-4 text-gray-600">Loading dashboard...</p>
+                    </div>
+                </div>
+            }
+        >
+            <DashboardContent />
+        </Suspense>
     );
 }

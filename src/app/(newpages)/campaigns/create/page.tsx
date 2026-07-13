@@ -1,7 +1,6 @@
-// app/campaigns/create/page.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createNewCampaign } from '../../../../services/campaignApi';
 import { ChevronDownIcon, ChevronUpIcon, CheckIcon, MegaphoneIcon } from '@heroicons/react/24/outline';
@@ -40,7 +39,8 @@ const countries = [
   'Greece', 'Israel', 'Romania', 'Hungary', 'Ukraine', 'Morocco',
 ];
 
-export default function CreateCampaign() {
+// ✅ This component contains the actual logic with useSearchParams
+function CreateCampaignContent() {
   const searchParams = useSearchParams();
   const accessToken = searchParams.get('access_token');
   const actId = searchParams.get('act_id');
@@ -71,69 +71,69 @@ export default function CreateCampaign() {
 
   const [showSuccess, setShowSuccess] = useState(false);
 
-const handleConfirm = async () => {
-  if (!formData.name || !formData.objective) return;
+  const handleConfirm = async () => {
+    if (!formData.name || !formData.objective) return;
 
-  if (!accessToken || !actId) {
-    setSubmitError('Missing access token or account ID. Please go back and reconnect your account.');
-    return;
-  }
-
-  const mappedObjective = objectiveCategoryMap[formData.objective];
-  if (!mappedObjective) {
-    setSubmitError('Invalid objective selected.');
-    return;
-  }
-
-  const payload = {
-    name: formData.name,
-    objective: mappedObjective,
-    status: 'PAUSED',
-    buying_type: formData.buying_type,
-    special_ad_categories: specialCategories.length > 0 ? specialCategories : ['NONE'],
-    is_adset_budget_sharing_enabled: false,
-  };
-
-  setSubmitting(true);
-  setSubmitError(null);
-
-  try {
-    const response = await createNewCampaign(payload, accessToken, actId);
-
-    if (response.id) {
-      setShowSuccess(true); // ✅ show success state
-
-      // strip "act_" prefix to match your dashboard's URL pattern
-      const cleanActId = actId.replace('act_', '');
-
-      setTimeout(() => {
-        router.push(`/choice/${cleanActId}?access_token=${accessToken}`);
-      }, 1500); // brief pause so the user sees the confirmation
-    } else {
-      setSubmitError('Campaign creation did not return an ID. Check console for details.');
+    if (!accessToken || !actId) {
+      setSubmitError('Missing access token or account ID. Please go back and reconnect your account.');
+      return;
     }
-  } catch (err) {
-    setSubmitError((err as Error).message);
-  } finally {
-    setSubmitting(false);
-  }
-};
+
+    const mappedObjective = objectiveCategoryMap[formData.objective];
+    if (!mappedObjective) {
+      setSubmitError('Invalid objective selected.');
+      return;
+    }
+
+    const payload = {
+      name: formData.name,
+      objective: mappedObjective,
+      status: 'PAUSED',
+      buying_type: formData.buying_type,
+      special_ad_categories: specialCategories.length > 0 ? specialCategories : ['NONE'],
+      is_adset_budget_sharing_enabled: false,
+    };
+
+    setSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const response = await createNewCampaign(payload, accessToken, actId);
+
+      if (response.id) {
+        setShowSuccess(true);
+
+        const cleanActId = actId.replace('act_', '');
+
+        setTimeout(() => {
+          router.push(`/choice/${cleanActId}?access_token=${accessToken}`);
+        }, 1500);
+      } else {
+        setSubmitError('Campaign creation did not return an ID. Check console for details.');
+      }
+    } catch (err) {
+      setSubmitError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
-        {showSuccess && (
-  <div className="fixed top-6 right-6 z-50 flex items-center gap-2.5 bg-white border border-green-200 shadow-lg rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-2">
-    <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center shrink-0">
-      <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-      </svg>
-    </div>
-    <div>
-      <p className="text-sm font-semibold text-gray-900">Campaign created</p>
-      <p className="text-xs text-gray-500">Redirecting to dashboard...</p>
-    </div>
-  </div>
-)}
+      {showSuccess && (
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2.5 bg-white border border-green-200 shadow-lg rounded-xl px-4 py-3 animate-in fade-in slide-in-from-top-2">
+          <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center shrink-0">
+            <svg className="w-3.5 h-3.5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-900">Campaign created</p>
+            <p className="text-xs text-gray-500">Redirecting to dashboard...</p>
+          </div>
+        </div>
+      )}
+      
       <div className="w-full max-w-2xl mx-auto">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
@@ -343,5 +343,23 @@ const handleConfirm = async () => {
         </div>
       </div>
     </div>
+  );
+}
+
+// ✅ Default export with Suspense boundary
+export default function CreateCampaign() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading campaign creator...</p>
+          </div>
+        </div>
+      }
+    >
+      <CreateCampaignContent />
+    </Suspense>
   );
 }

@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { createCampaign } from '../../../services/Api';
 import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/20/solid';
-
 
 const buyingTypes = [
   { label: 'Auction', value: 'AUCTION' },
@@ -34,7 +33,8 @@ const objectiveCategoryMap: Record<string, string> = {
     Sales: 'OUTCOME_SALES'
 };
 
-export default function CreateCampaign() {
+// ✅ This component contains the actual logic with useSearchParams
+function CreateCampaignContent() {
   const searchParams = useSearchParams();
   const accessToken = searchParams.get('access_token');
   const actId = searchParams.get('act_id');
@@ -101,20 +101,12 @@ export default function CreateCampaign() {
     objective: ''
   });
 
-  // const allSpecialCategories = [
-  //   "Financial products and services",
-  //   "Employment",
-  //   "Housing",
-  //   "Social issues, elections or politics",
-  // ];
-
   const allSpecialCategories = [
     { label: "Financial products and services", value: "FINANCIAL_PRODUCTS_SERVICES" },
     { label: "Employment", value: "EMPLOYMENT" },
     { label: "Housing", value: "HOUSING" },
     { label: "Social issues, elections or politics", value: "ISSUES_ELECTIONS_POLITICS" },
   ];
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -322,5 +314,23 @@ export default function CreateCampaign() {
         Continue
       </button>
     </div>
+  );
+}
+
+// ✅ Default export with Suspense boundary
+export default function CreateCampaign() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full max-w-2xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-500 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading campaign creator...</p>
+          </div>
+        </div>
+      }
+    >
+      <CreateCampaignContent />
+    </Suspense>
   );
 }

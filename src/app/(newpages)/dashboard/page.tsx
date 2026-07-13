@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   PlusIcon,
@@ -15,7 +15,8 @@ import {
 } from '@heroicons/react/24/outline';
 import { fetchAllDashboardData } from '../../../services/campaignApi';
 
-export default function FlatAdsDashboard() {
+// ✅ This component contains the actual logic with useSearchParams
+function FlatAdsDashboardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const accessToken = searchParams.get('access_token') || undefined;
@@ -186,73 +187,43 @@ export default function FlatAdsDashboard() {
           </p>
         </header>
 
-{/* uncomment this for dynamic data  */}
-{/* {selectedInsights && !Array.isArray(selectedInsights) && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <div className="bg-white rounded-xl p-4 shadow-sm border">
-              <div className="flex items-center gap-2 text-gray-500 text-xs">
-                <EyeIcon className="w-4 h-4" /> Impressions
-              </div>
-              <p className="text-xl font-bold text-gray-900">{formatNumber(selectedInsights.impressions || 0)}</p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="bg-white rounded-xl p-4 shadow-sm text-center">
+            <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-2">
+              <EyeIcon className="w-5 h-5 text-blue-500" />
             </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border">
-              <div className="flex items-center gap-2 text-gray-500 text-xs">
-                <CursorArrowRaysIcon className="w-4 h-4" /> Clicks
-              </div>
-              <p className="text-xl font-bold text-gray-900">{formatNumber(selectedInsights.clicks || 0)}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border">
-              <div className="flex items-center gap-2 text-gray-500 text-xs">
-                <ChartBarIcon className="w-4 h-4" /> CTR
-              </div>
-              <p className="text-xl font-bold text-gray-900">{selectedInsights.ctr || '0%'}</p>
-            </div>
-            <div className="bg-white rounded-xl p-4 shadow-sm border">
-              <div className="flex items-center gap-2 text-gray-500 text-xs">
-                <CurrencyDollarIcon className="w-4 h-4" /> Spend
-              </div>
-              <p className="text-xl font-bold text-gray-900">{formatCurrency(selectedInsights.spend || 0)}</p>
-            </div>
+            <p className="text-xs text-gray-500">Impressions</p>
+            <p className="text-xl font-bold text-gray-900">12,847</p>
           </div>
-        )}
-         */}
-{/* ✅ Alternative layout with icons on top */}
-<div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-  <div className="bg-white rounded-xl p-4 shadow-sm  text-center">
-    <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-2">
-      <EyeIcon className="w-5 h-5 text-blue-500" />
-    </div>
-    <p className="text-xs text-gray-500">Impressions</p>
-    <p className="text-xl font-bold text-gray-900">12,847</p>
-  </div>
-  <div className="bg-white rounded-xl p-4 shadow-sm  text-center">
-    <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-2">
-      <CursorArrowRaysIcon className="w-5 h-5 text-green-500" />
-    </div>
-    <p className="text-xs text-gray-500">Clicks</p>
-    <p className="text-xl font-bold text-gray-900">342</p>
-  </div>
-  <div className="bg-white rounded-xl p-4 shadow-sm  text-center">
-    <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-2">
-      <ChartBarIcon className="w-5 h-5 text-purple-500" />
-    </div>
-    <p className="text-xs text-gray-500">CTR</p>
-    <p className="text-xl font-bold text-gray-900">2.66%</p>
-  </div>
-  <div className="bg-white rounded-xl p-4 shadow-sm  text-center">
-    <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-2">
-      <CurrencyDollarIcon className="w-5 h-5 text-orange-500" />
-    </div>
-    <p className="text-xs text-gray-500">Spend</p>
-    <p className="text-xl font-bold text-gray-900">$89.23</p>
-  </div>
-</div>
+          <div className="bg-white rounded-xl p-4 shadow-sm text-center">
+            <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-2">
+              <CursorArrowRaysIcon className="w-5 h-5 text-green-500" />
+            </div>
+            <p className="text-xs text-gray-500">Clicks</p>
+            <p className="text-xl font-bold text-gray-900">342</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm text-center">
+            <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-2">
+              <ChartBarIcon className="w-5 h-5 text-purple-500" />
+            </div>
+            <p className="text-xs text-gray-500">CTR</p>
+            <p className="text-xl font-bold text-gray-900">2.66%</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 shadow-sm text-center">
+            <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-2">
+              <CurrencyDollarIcon className="w-5 h-5 text-orange-500" />
+            </div>
+            <p className="text-xs text-gray-500">Spend</p>
+            <p className="text-xl font-bold text-gray-900">$89.23</p>
+          </div>
+        </div>
 
         {/* 3-Column Hierarchy */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {/* Campaigns */}
-          <div className="bg-white  rounded-2xl shadow-sm flex flex-col h-[550px] overflow-hidden">
-            <div className="p-4  bg-gradient-to-r from-blue-50 to-white flex items-center gap-2.5">
+          <div className="bg-white rounded-2xl shadow-sm flex flex-col h-[550px] overflow-hidden">
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-white flex items-center gap-2.5">
               <MegaphoneIcon className="w-4 h-4 text-blue-600" />
               <h2 className="font-semibold text-gray-800">Campaigns</h2>
               <span className="ml-auto text-xs font-medium text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
@@ -285,8 +256,8 @@ export default function FlatAdsDashboard() {
           </div>
 
           {/* Ad Sets */}
-          <div className="bg-white  rounded-2xl shadow-sm flex flex-col h-[550px] overflow-hidden scrollbar-none ">
-            <div className="p-4  bg-gradient-to-r from-amber-50 to-white flex items-center gap-2.5">
+          <div className="bg-white rounded-2xl shadow-sm flex flex-col h-[550px] overflow-hidden scrollbar-none">
+            <div className="p-4 bg-gradient-to-r from-amber-50 to-white flex items-center gap-2.5">
               <FolderIcon className="w-4 h-4 text-amber-600" />
               <h2 className="font-semibold text-gray-800">Ad Sets</h2>
               <span className="ml-auto text-xs font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
@@ -317,8 +288,8 @@ export default function FlatAdsDashboard() {
           </div>
 
           {/* Ads */}
-          <div className="bg-white  rounded-2xl shadow-sm flex flex-col h-[550px] overflow-hidden">
-            <div className="p-4  bg-gradient-to-r from-purple-50 to-white flex items-center gap-2.5">
+          <div className="bg-white rounded-2xl shadow-sm flex flex-col h-[550px] overflow-hidden">
+            <div className="p-4 bg-gradient-to-r from-purple-50 to-white flex items-center gap-2.5">
               <RectangleStackIcon className="w-4 h-4 text-purple-600" />
               <h2 className="font-semibold text-gray-800">Ads</h2>
               <span className="ml-auto text-xs font-medium text-purple-700 bg-purple-100 px-2 py-0.5 rounded-full">
@@ -353,5 +324,23 @@ export default function FlatAdsDashboard() {
         </div>
       </div>
     </>
+  );
+}
+
+// ✅ Default export with Suspense boundary
+export default function FlatAdsDashboard() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-full mx-auto p-6 bg-orange-200 min-h-screen flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          </div>
+        </div>
+      }
+    >
+      <FlatAdsDashboardContent />
+    </Suspense>
   );
 }

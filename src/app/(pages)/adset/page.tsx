@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const conversionLocations = [
@@ -74,7 +74,8 @@ async function createAdSetRequest(adSetData: any, actId: string, accessToken: st
   return result;
 }
 
-export default function CreateAdSet() {
+// ✅ This component contains the actual logic with useSearchParams
+function CreateAdSetContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const actId = searchParams.get('act_id')!;
@@ -450,5 +451,23 @@ export default function CreateAdSet() {
       Continue
     </button>
   </div>
+  );
+}
+
+// ✅ Default export with Suspense boundary
+export default function CreateAdSet() {
+  return (
+    <Suspense
+      fallback={
+        <div className="max-w-4xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading ad set creator...</p>
+          </div>
+        </div>
+      }
+    >
+      <CreateAdSetContent />
+    </Suspense>
   );
 }

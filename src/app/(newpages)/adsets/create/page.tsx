@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   ArrowLeftIcon, 
@@ -15,7 +15,8 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline';
 
-export default function CreateAdSetPage() {
+// ✅ This component contains the actual logic with useSearchParams
+function CreateAdSetContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const accessToken = searchParams.get('access_token');
@@ -521,5 +522,23 @@ export default function CreateAdSetPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ✅ Default export with Suspense boundary
+export default function CreateAdSetPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-orange-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading ad set creator...</p>
+          </div>
+        </div>
+      }
+    >
+      <CreateAdSetContent />
+    </Suspense>
   );
 }

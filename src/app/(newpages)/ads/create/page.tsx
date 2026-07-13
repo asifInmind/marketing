@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
@@ -30,11 +30,18 @@ async function createAdRequest(payload: any, accessToken: string, actId: string)
   return json;
 }
 
-export default function CreateAdPage() {
+// ✅ This component contains the actual logic with useSearchParams
+function CreateAdContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const accessToken = searchParams.get('access_token');
   const actId = searchParams.get('act_id');
+
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Architecture States
   const [hierarchy, setHierarchy] = useState<any[]>([]);
@@ -50,13 +57,13 @@ export default function CreateAdPage() {
   const [availableAdSets, setAvailableAdSets] = useState<any[]>([]);
   const [selectedAdSetId, setSelectedAdSetId] = useState<string>('');
 
-  // Ad set context, fetched once an ad set is selected, so we can warn about mismatches
+  // Ad set context
   const [adSetOptimizationGoal, setAdSetOptimizationGoal] = useState<string>('');
   const [adSetDestinationType, setAdSetDestinationType] = useState<string>('');
 
   // Form Content States
   const [adName, setAdName] = useState<string>('');
-  const [status, setStatus] = useState<string>('PAUSED'); // Safe draft state default
+  const [status, setStatus] = useState<string>('PAUSED');
 
   // Creative States
   const [selectedPageId, setSelectedPageId] = useState<string>('');
@@ -71,8 +78,9 @@ export default function CreateAdPage() {
     'CONTACT_US', 'GET_QUOTE', 'SUBSCRIBE', 'APPLY_NOW', 'GET_OFFER',
   ];
 
-  // Fetch the nested campaign -> adset hierarchy, plus pages for creative attribution
   useEffect(() => {
+    if (!isClient) return;
+
     if (!accessToken || !actId) {
       setError('Missing context parameters (access_token or act_id).');
       setLoadingData(false);
@@ -81,7 +89,6 @@ export default function CreateAdPage() {
 
     async function fetchAccountHierarchy() {
       try {
-        // Fetch campaigns and their nested adsets in a single call
         const fields = 'name,status,adsets{name,status,optimization_goal,destination_type,promoted_object}';
         const url = `https://graph.facebook.com/v25.0/${actId}/campaigns?fields=${fields}&access_token=${accessToken}`;
 
@@ -92,7 +99,6 @@ export default function CreateAdPage() {
 
         setHierarchy(json.data || []);
 
-        // Fetch pages needed for the ad creative's object_story_spec
         setLoadingPages(true);
         const pagesUrl = `https://graph.facebook.com/v25.0/me/accounts?fields=id,name,category&access_token=${accessToken}`;
         const pagesRes = await fetch(pagesUrl);
@@ -109,10 +115,11 @@ export default function CreateAdPage() {
     }
 
     fetchAccountHierarchy();
-  }, [accessToken, actId]);
+  }, [accessToken, actId, isClient]);
 
-  // Handle Cascading Filter: Triggered when the first dropdown (Campaign) changes
   useEffect(() => {
+    if (!isClient) return;
+
     if (!selectedCampaignId) {
       setAvailableAdSets([]);
       setSelectedAdSetId('');
@@ -126,10 +133,11 @@ export default function CreateAdPage() {
     setSelectedAdSetId('');
     setAdSetOptimizationGoal('');
     setAdSetDestinationType('');
-  }, [selectedCampaignId, hierarchy]);
+  }, [selectedCampaignId, hierarchy, isClient]);
 
-  // Pull context off the selected ad set so we can surface useful info/warnings
   useEffect(() => {
+    if (!isClient) return;
+
     if (!selectedAdSetId) {
       setAdSetOptimizationGoal('');
       setAdSetDestinationType('');
@@ -140,14 +148,12 @@ export default function CreateAdPage() {
     setAdSetOptimizationGoal(matchedAdSet?.optimization_goal || '');
     setAdSetDestinationType(matchedAdSet?.destination_type || '');
 
-    // Pre-select the page tied to this ad set's promoted_object, if present
     const promotedPageId = matchedAdSet?.promoted_object?.page_id;
     if (promotedPageId) {
       setSelectedPageId(promotedPageId);
     }
-  }, [selectedAdSetId, availableAdSets]);
+  }, [selectedAdSetId, availableAdSets, isClient]);
 
-  // Handle Form Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -180,8 +186,6 @@ export default function CreateAdPage() {
     setSubmitting(true);
 
     try {
-      // Build a proper object_story_spec-based creative instead of a mock image_hash.
-      // This is what Meta actually needs to render a link ad.
       const creative = {
         object_story_spec: {
           page_id: selectedPageId,
@@ -217,6 +221,17 @@ export default function CreateAdPage() {
       setSubmitting(false);
     }
   };
+
+  if (!isClient) {
+    return (
+      <div className="min-h-screen bg-orange-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-orange-100 p-6 md:p-12">
@@ -503,5 +518,23 @@ export default function CreateAdPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+// ✅ Default export with Suspense boundary
+export default function CreateAdPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-orange-100 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading ad creator...</p>
+          </div>
+        </div>
+      }
+    >
+      <CreateAdContent />
+    </Suspense>
   );
 }
