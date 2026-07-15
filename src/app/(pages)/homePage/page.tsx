@@ -1,4 +1,5 @@
 'use client';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import React from 'react';
@@ -8,41 +9,84 @@ import {
     MusicalNoteIcon,
     ArrowRightIcon,
     ShieldCheckIcon,
+    VideoCameraIcon, // For Google
+    UserCircleIcon,
 } from '@heroicons/react/24/outline';
 
 export default function HomePage() {
-    // --- Original state, untouched ---
-    const [mode, setMode] = useState<'manual' | 'login' | 'tiktok' | 'tiktok-login' | null>(null);
+    // --- Original Meta state, untouched ---
+    const [mode, setMode] = useState<'manual' | 'login' | 'tiktok' | 'tiktok-login' | 'google' | 'google-login' | null>(null);
     const [adAccountId, setAdAccountId] = useState('');
     const [accessToken, setAccessToken] = useState('');
     const router = useRouter();
 
-    // --- New state, additive only: powers the new TikTok manual-entry fields ---
+    // --- TikTok state ---
     const [tiktokAdvertiserId, setTiktokAdvertiserId] = useState('');
     const [tiktokAccessToken, setTiktokAccessToken] = useState('');
 
+    // --- Google state ---
+    const [googleCustomerId, setGoogleCustomerId] = useState('');
+    const [googleDeveloperToken, setGoogleDeveloperToken] = useState('');
+    const [googleAccessToken, setGoogleAccessToken] = useState('');
+    const [googleLoginCustomerId, setGoogleLoginCustomerId] = useState(''); // Optional MCC
+
     const handleProceed = () => {
-        console.log("App ID:", process.env.FB_APP_ID);
+    try {
+        // --- Meta ---
         if (mode === 'manual') {
+            if (!adAccountId || !accessToken) {
+                throw new Error('Please fill in all Meta manual fields');
+            }
             router.push(`/choice/${adAccountId}?access_token=${accessToken}`);
         } else if (mode === 'login') {
-            // Redirect to Facebook login (you'll implement this separately)
-            window.location.href = '/api/Facebook-login'; // adjust endpoint accordingly
-        } else if (mode === 'tiktok') {
-            // New branch, additive only — mirrors the 'manual' pattern above.
-            // Adjust the destination route to match your TikTok flow.
-            router.push(`/choice/tiktok/${tiktokAdvertiserId}?access_token=${tiktokAccessToken}`);
-        } else if (mode === 'tiktok-login') {
-            // New branch, additive only — mirrors the Meta 'login' pattern above.
-            // Adjust the endpoint to match your actual TikTok OAuth route.
-            window.location.href = '/api/tiktok-login';
+            window.location.href = '/api/Facebook-login';
         }
-    };
+        // --- TikTok ---
+        // else if (mode === 'tiktok') {
+        //     if (!tiktokAdvertiserId || !tiktokAccessToken) {
+        //         throw new Error('Please fill in all TikTok manual fields');
+        //     }
+        //     router.push(`/tiktok/choice/${tiktokAdvertiserId}?access_token=${tiktokAccessToken}`);
+        // } else if (mode === 'tiktok-login') {
+        //     window.location.href = '/api/tiktok-login';
+        // }
+        // --- Google ---
+        // else if (mode === 'google') {
+        //     if (!googleCustomerId || !googleDeveloperToken || !googleAccessToken) {
+        //         throw new Error('Please fill in all Google manual fields');
+        //     }
+        //     const params = new URLSearchParams({
+        //         developerToken: googleDeveloperToken,
+        //         accessToken: googleAccessToken,
+        //     });
+        //     if (googleLoginCustomerId) {
+        //         params.append('loginCustomerId', googleLoginCustomerId);
+        //     }
+        //     router.push(`/google/choice/${googleCustomerId}?${params.toString()}`);
+        // } else if (mode === 'google-login') {
+        //     window.location.href = '/api/google-login';
+        // }
+    } catch (error) {
+        alert(error instanceof Error ? error.message : 'An error occurred');
+        console.error('Navigation error:', error);
+    }
+};
 
-    const isProceedDisabled =
-        mode === null ||
-        (mode === 'manual' && !adAccountId) ||
-        (mode === 'tiktok' && (!tiktokAdvertiserId || !tiktokAccessToken));
+    const isProceedDisabled = () => {
+        if (mode === null) return true;
+        
+        // Meta manual
+        if (mode === 'manual' && (!adAccountId || !accessToken)) return true;
+        
+        // TikTok manual
+        // if (mode === 'tiktok' && (!tiktokAdvertiserId || !tiktokAccessToken)) return true;
+        
+        // Google manual
+        // if (mode === 'google' && (!googleCustomerId || !googleDeveloperToken || !googleAccessToken)) return true;
+        
+        // Login modes don't need validation
+        return false;
+    };
 
     return (
         <div className="min-h-screen bg-slate-950 relative overflow-hidden flex items-center justify-center px-4 py-12">
@@ -52,7 +96,7 @@ export default function HomePage() {
                 <div className="absolute -bottom-40 -right-32 w-[32rem] h-[32rem] bg-fuchsia-600/10 rounded-full blur-[120px]" />
             </div>
 
-            <div className="relative w-full max-w-xl">
+            <div className="relative w-full max-w-2xl">
                 {/* Header */}
                 <div className="text-center mb-10">
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] font-medium text-slate-300 tracking-wide uppercase mb-5">
@@ -73,9 +117,9 @@ export default function HomePage() {
                         Choose how you want to proceed
                     </p>
 
-                    {/* Mode selector tiles */}
+                    {/* ========== META ========== */}
                     <p className="text-[10px] font-semibold text-blue-300/70 uppercase tracking-wider mb-2">
-                        Meta
+                        Meta Ads
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                         {/* Meta — manual */}
@@ -143,11 +187,12 @@ export default function HomePage() {
                         </label>
                     </div>
 
-                    <p className="text-[10px] font-semibold text-fuchsia-300/70 uppercase tracking-wider mb-2">
-                        TikTok
+                    {/* ========== TIKTOK ========== */}
+                    {/* <p className="text-[10px] font-semibold text-fuchsia-300/70 uppercase tracking-wider mb-2">
+                        TikTok Ads
                     </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
-                        {/* TikTok — manual */}
+                      
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
                         <label
                             className={`group relative cursor-pointer rounded-2xl border overflow-hidden transition-all ${
                                 mode === 'tiktok'
@@ -179,7 +224,7 @@ export default function HomePage() {
                             </div>
                         </label>
 
-                        {/* TikTok — login (new) */}
+                      
                         <label
                             className={`group relative cursor-pointer rounded-2xl border overflow-hidden transition-all ${
                                 mode === 'tiktok-login'
@@ -210,9 +255,80 @@ export default function HomePage() {
                                 </div>
                             </div>
                         </label>
-                    </div>
+                    </div> */}
 
-                    {/* Meta manual fields */}
+                    {/* ========== GOOGLE ========== */}
+                    {/* <p className="text-[10px] font-semibold text-emerald-300/70 uppercase tracking-wider mb-2">
+                        Google Ads
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                      
+                        <label
+                            className={`group relative cursor-pointer rounded-2xl border overflow-hidden transition-all ${
+                                mode === 'google'
+                                    ? 'border-emerald-400/60 bg-emerald-500/10 ring-2 ring-emerald-400/30'
+                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+                            }`}
+                        >
+                            <span className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-400" />
+                            <input
+                                type="radio"
+                                name="mode"
+                                value="google"
+                                checked={mode === 'google'}
+                                onChange={() => setMode('google')}
+                                className="sr-only"
+                            />
+                            <div className="p-4 flex flex-col items-start gap-2.5">
+                                <div className="p-2 rounded-xl bg-emerald-500/15">
+                                    <KeyIcon className="w-4.5 h-4.5 text-emerald-300" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-white leading-tight">
+                                        Google &mdash; Manual
+                                    </p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                                        Enter Customer ID &amp; tokens
+                                    </p>
+                                </div>
+                            </div>
+                        </label>
+
+                        <label
+                            className={`group relative cursor-pointer rounded-2xl border overflow-hidden transition-all ${
+                                mode === 'google-login'
+                                    ? 'border-emerald-400/60 bg-emerald-500/10 ring-2 ring-emerald-400/30'
+                                    : 'border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.04]'
+                            }`}
+                        >
+                            <span className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-teal-400" />
+                            <input
+                                type="radio"
+                                name="mode"
+                                value="google-login"
+                                checked={mode === 'google-login'}
+                                onChange={() => setMode('google-login')}
+                                className="sr-only"
+                            />
+                            <div className="p-4 flex flex-col items-start gap-2.5">
+                                <div className="p-2 rounded-xl bg-emerald-500/15">
+                                    <ArrowRightOnRectangleIcon className="w-4.5 h-4.5 text-emerald-300" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-semibold text-white leading-tight">
+                                        Google &mdash; Login
+                                    </p>
+                                    <p className="text-[11px] text-slate-400 mt-0.5 leading-snug">
+                                        Connect with Google
+                                    </p>
+                                </div>
+                            </div>
+                        </label>
+                    </div> */}
+
+                    {/* ========== MANUAL FIELDS ========== */}
+
+                    {/* Meta manual fields - UNTOUCHED */}
                     {mode === 'manual' && (
                         <div className="mt-5 space-y-3 animate-in fade-in slide-in-from-top-2">
                             <div>
@@ -242,8 +358,8 @@ export default function HomePage() {
                         </div>
                     )}
 
-                    {/* TikTok manual fields (new) */}
-                    {mode === 'tiktok' && (
+                    {/* TikTok manual fields */}
+                    {/* {mode === 'tiktok' && (
                         <div className="mt-5 space-y-3 animate-in fade-in slide-in-from-top-2">
                             <div>
                                 <label className="block text-[11px] font-medium text-slate-400 mb-1.5">
@@ -270,12 +386,83 @@ export default function HomePage() {
                                 />
                             </div>
                         </div>
-                    )}
+                    )} */}
 
-                    {/* Proceed button */}
+                    {/* Google manual fields */}
+                    {/* {mode === 'google' && (
+                        <div className="mt-5 space-y-3 animate-in fade-in slide-in-from-top-2">
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">
+                                    Google Ads Customer ID <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={googleCustomerId}
+                                    onChange={(e) => {
+                                        // Remove hyphens for clean input
+                                        const value = e.target.value.replace(/-/g, '');
+                                        if (/^\d*$/.test(value)) {
+                                            setGoogleCustomerId(value);
+                                        }
+                                    }}
+                                    placeholder="e.g. 1234567890"
+                                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400/50 transition-all"
+                                />
+                                <p className="text-[10px] text-slate-500 mt-1">
+                                    Enter only numbers (hyphens will be removed automatically)
+                                </p>
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">
+                                    Developer Token <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={googleDeveloperToken}
+                                    onChange={(e) => setGoogleDeveloperToken(e.target.value)}
+                                    placeholder="Enter your Google Ads Developer Token"
+                                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400/50 transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">
+                                    OAuth Access Token <span className="text-red-400">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={googleAccessToken}
+                                    onChange={(e) => setGoogleAccessToken(e.target.value)}
+                                    placeholder="Enter your OAuth Access Token"
+                                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400/50 transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-400 mb-1.5">
+                                    Login Customer ID <span className="text-slate-500">(Optional - for MCC)</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={googleLoginCustomerId}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/-/g, '');
+                                        if (/^\d*$/.test(value) || value === '') {
+                                            setGoogleLoginCustomerId(value);
+                                        }
+                                    }}
+                                    placeholder="e.g. 0987654321"
+                                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-400/50 focus:border-emerald-400/50 transition-all"
+                                />
+                                <p className="text-[10px] text-slate-500 mt-1">
+                                    Required if using a Manager Account (MCC)
+                                </p>
+                            </div>
+                        </div>
+                    )} */}
+
+                    {/* ========== PROCEED BUTTON ========== */}
                     <button
                         onClick={handleProceed}
-                        disabled={isProceedDisabled}
+                        disabled={isProceedDisabled()}
                         className="mt-6 w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-950 text-sm font-semibold rounded-xl shadow-lg shadow-black/20 hover:bg-slate-100 active:scale-[0.98] disabled:opacity-30 disabled:cursor-not-allowed disabled:active:scale-100 transition-all"
                     >
                         Proceed
