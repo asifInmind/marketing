@@ -8,12 +8,19 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "No code provided" }, { status: 400 });
     }
 
+    // ✅ CHANGE THIS: Use your Vercel URL
+    const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://marketing-lovat-iota-62.vercel.app'  // ← YOUR VERCEL URL
+        : 'http://localhost:3000';
+    
+    const redirectUri = `${baseUrl}/api/Facebook-callback`;
+
     const tokenRes = await fetch(
         `https://graph.facebook.com/v18.0/oauth/access_token?` +
         new URLSearchParams({
             client_id: process.env.FB_APP_ID!,
             client_secret: process.env.FB_APP_SECRET!,
-            redirect_uri: "http://localhost:3000/api/Facebook-callback",
+            redirect_uri: redirectUri,  // ✅ MATCHES Facebook settings
             code,
         })
     );
@@ -37,8 +44,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "No ad accounts found" }, { status: 404 });
     }
 
-    // Redirect to dashboard with account ID and token
+    // ✅ CHANGE THIS: Redirect to your Vercel URL
     return NextResponse.redirect(
-        `http://localhost:3000/choice?act_id=${firstAccountId.replace('act_', '')}&access_token=${accessToken}`
+        `${baseUrl}/choice?act_id=${firstAccountId.replace('act_', '')}&access_token=${accessToken}`
     );
 }
