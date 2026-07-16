@@ -12,6 +12,7 @@ import { MetaMetricCards } from './MetaMetricCards';
 import { MetaCampaignTable } from './MetaCampaignTable';
 import { MetaAdSetTable } from './MetaAdSetTable';
 import { MetaAdTable } from './MetaAdTable';
+import { MetaCampaignDetail } from './MetaCampaignDetail'; // ✅ NEW
 import { MetaLoadMoreButton } from './MetaLoadMoreButton';
 import { DATE_RANGE_OPTIONS } from '../../lib/utils/constants';
 
@@ -23,8 +24,12 @@ interface MetaDashboardProps {
 export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
   const [activeTab, setActiveTab] = useState<'campaigns' | 'adSets' | 'ads'>('campaigns');
   const [selectedDateRange, setSelectedDateRange] = useState('last_30d');
-  const [currentTime, setCurrentTime] = useState<string>(''); // ✅ NEW - for client-only date
-  
+  const [currentTime, setCurrentTime] = useState<string>('');
+
+  // ✅ NEW: Campaign detail state
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(null);
+  const [showCampaignDetail, setShowCampaignDetail] = useState(false);
+
   const {
     campaigns,
     adSets,
@@ -41,22 +46,40 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
     setDateRange,
   } = useMetaDashboard(accessToken, accountId);
 
-  // ✅ NEW - Set date only on client side
+  // ✅ NEW: Get the selected campaign data
+  const selectedCampaign = selectedCampaignId
+    ? campaigns.find(c => c.id === selectedCampaignId)
+    : null;
+
+  // ✅ NEW: Filter ad sets for the selected campaign
+  const filteredAdSets = selectedCampaignId
+    ? adSets.filter(adSet => adSet.campaignId === selectedCampaignId)
+    : adSets;
+
+  // ✅ NEW: Handle campaign click
+  const handleCampaignClick = (campaignId: string) => {
+    setSelectedCampaignId(campaignId);
+    setShowCampaignDetail(true);
+  };
+
+  // ✅ NEW: Handle back from campaign detail
+  const handleBackFromDetail = () => {
+    setSelectedCampaignId(null);
+    setShowCampaignDetail(false);
+  };
+
   useEffect(() => {
     setCurrentTime(new Date().toLocaleString());
   }, []);
 
-  // Handle date range change
   const handleDateRangeChange = (value: string) => {
     setSelectedDateRange(value);
     if (value === 'custom') {
-      // Handle custom range - show date picker
       return;
     }
     setDateRange({ preset: value });
   };
 
-  // Handle tab change - load creatives when switching to ads tab
   const handleTabChange = (tab: 'campaigns' | 'adSets' | 'ads') => {
     setActiveTab(tab);
     if (tab === 'ads' && ads.length > 0) {
@@ -100,10 +123,12 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                 </div>
                 <div>
                   <h1 className="text-xl font-bold text-slate-900 dark:text-white">
-                    Meta Ads Dashboard
+                    {showCampaignDetail ? 'Campaign Details' : 'Meta Ads Dashboard'}
                   </h1>
                   <p className="text-sm text-slate-500 dark:text-slate-400">
-                    Account: {accountId}
+                    {showCampaignDetail && selectedCampaign
+                      ? selectedCampaign.name
+                      : `Account: ${accountId}`}
                   </p>
                 </div>
               </div>
@@ -138,95 +163,111 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Summary Cards */}
-        <MetaMetricCards summary={summary} loading={loading} />
-
-        {/* Tabs */}
-        <div className="border-b border-slate-200 dark:border-slate-800">
-          <nav className="flex gap-6">
-            <button
-              onClick={() => handleTabChange('campaigns')}
-              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'campaigns'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              Campaigns
-              <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                {campaigns.length}
-              </span>
-            </button>
-            <button
-              onClick={() => handleTabChange('adSets')}
-              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'adSets'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              Ad Sets
-              <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                {adSets.length}
-              </span>
-            </button>
-            <button
-              onClick={() => handleTabChange('ads')}
-              className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === 'ads'
-                  ? 'border-blue-600 text-blue-600 dark:text-blue-400'
-                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
-              }`}
-            >
-              Ads
-              <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
-                {ads.length}
-              </span>
-              {loadingCreatives && (
-                <span className="ml-2 text-xs text-blue-500">Loading creatives...</span>
-              )}
-            </button>
-          </nav>
-        </div>
-
-        {/* Tab Content */}
-        {activeTab === 'campaigns' && (
+        {/* ✅ Show Campaign Detail or Normal Dashboard */}
+        {showCampaignDetail && selectedCampaign ? (
+          <MetaCampaignDetail
+            campaign={selectedCampaign}
+            adSets={filteredAdSets}
+            loading={loading}
+            hasMore={hasMore.adSets}
+            loadingMore={loadingMore.adSets}
+            onLoadMore={() => loadMore('adSets')}
+            onBack={handleBackFromDetail}
+          />
+        ) : (
           <>
-            <MetaCampaignTable campaigns={campaigns} loading={loading} />
-            <MetaLoadMoreButton
-              hasMore={hasMore.campaigns}
-              loading={loadingMore.campaigns}
-              onClick={() => loadMore('campaigns')}
-              count={campaigns.length}
-            />
+            {/* Summary Cards */}
+            <MetaMetricCards summary={summary} loading={loading} />
+
+            {/* Tabs */}
+            <div className="border-b border-slate-200 dark:border-slate-800">
+              <nav className="flex gap-6">
+                <button
+                  onClick={() => handleTabChange('campaigns')}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'campaigns'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                >
+                  Campaigns
+                  <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                    {campaigns.length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleTabChange('adSets')}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'adSets'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                >
+                  Ad Sets
+                  <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                    {adSets.length}
+                  </span>
+                </button>
+                <button
+                  onClick={() => handleTabChange('ads')}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${activeTab === 'ads'
+                    ? 'border-blue-600 text-blue-600 dark:text-blue-400'
+                    : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
+                    }`}
+                >
+                  Ads
+                  <span className="ml-2 text-xs bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                    {ads.length}
+                  </span>
+                  {loadingCreatives && (
+                    <span className="ml-2 text-xs text-blue-500">Loading creatives...</span>
+                  )}
+                </button>
+              </nav>
+            </div>
+
+            {/* Tab Content */}
+            {activeTab === 'campaigns' && (
+              <>
+                <MetaCampaignTable
+                  campaigns={campaigns}
+                  loading={loading}
+                  onCampaignClick={handleCampaignClick} // ✅ NEW
+                />
+                <MetaLoadMoreButton
+                  hasMore={hasMore.campaigns}
+                  loading={loadingMore.campaigns}
+                  onClick={() => loadMore('campaigns')}
+                  count={campaigns.length}
+                />
+              </>
+            )}
+
+            {activeTab === 'adSets' && (
+              <>
+                <MetaAdSetTable adSets={adSets} loading={loading} />
+                <MetaLoadMoreButton
+                  hasMore={hasMore.adSets}
+                  loading={loadingMore.adSets}
+                  onClick={() => loadMore('adSets')}
+                  count={adSets.length}
+                />
+              </>
+            )}
+
+            {activeTab === 'ads' && (
+              <>
+                <MetaAdTable ads={ads} loading={loading} loadingCreatives={loadingCreatives} />
+                <MetaLoadMoreButton
+                  hasMore={hasMore.ads}
+                  loading={loadingMore.ads}
+                  onClick={() => loadMore('ads')}
+                  count={ads.length}
+                />
+              </>
+            )}
           </>
         )}
 
-        {activeTab === 'adSets' && (
-          <>
-            <MetaAdSetTable adSets={adSets} loading={loading} />
-            <MetaLoadMoreButton
-              hasMore={hasMore.adSets}
-              loading={loadingMore.adSets}
-              onClick={() => loadMore('adSets')}
-              count={adSets.length}
-            />
-          </>
-        )}
-
-        {activeTab === 'ads' && (
-          <>
-            <MetaAdTable ads={ads} loading={loading} loadingCreatives={loadingCreatives} />
-            <MetaLoadMoreButton
-              hasMore={hasMore.ads}
-              loading={loadingMore.ads}
-              onClick={() => loadMore('ads')}
-              count={ads.length}
-            />
-          </>
-        )}
-
-        {/* Footer - FIXED: Use client-only date */}
+        {/* Footer */}
         <div className="text-center text-xs text-slate-500 dark:text-slate-400 py-4 border-t border-slate-200 dark:border-slate-800">
           Data is updated in real-time • Last sync: {currentTime || 'Loading...'}
         </div>

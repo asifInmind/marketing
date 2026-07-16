@@ -1,16 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Filter, Download, TrendingUp, TrendingDown } from 'lucide-react';
+import { Search, Filter, Download, TrendingUp, TrendingDown, ChevronRight } from 'lucide-react';
 import { MetaStatusBadge } from './MetaStatusBadge';
 import type { TransformedCampaign } from '../../lib/types/meta.types';
 
 interface MetaCampaignTableProps {
   campaigns: TransformedCampaign[];
   loading: boolean;
+  onCampaignClick?: (campaignId: string) => void; // ✅ NEW
 }
 
-export function MetaCampaignTable({ campaigns, loading }: MetaCampaignTableProps) {
+export function MetaCampaignTable({ campaigns, loading, onCampaignClick }: MetaCampaignTableProps) {
   const [sortField, setSortField] = useState<keyof TransformedCampaign>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,23 +96,24 @@ export function MetaCampaignTable({ campaigns, loading }: MetaCampaignTableProps
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
-    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Campaign</th>
-    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
-    <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
-    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Impressions</th>
-    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Clicks</th>
-    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CTR</th>
-    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cost</th>
-    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Conversions</th>
-    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Revenue</th>  {/* ✅ NEW */}
-    <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ROAS</th>  {/* ✅ NEW */}
-  </tr>
-</thead>
+            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Campaign</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Impressions</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Clicks</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">CTR</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Cost</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Conversions</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Revenue</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">ROAS</th>
+              {/* <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Action</th> ✅ NEW */}
+            </tr>
+          </thead>
           <tbody>
             {sortedCampaigns.length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-8 text-slate-500 dark:text-slate-400">
+                <td colSpan={11} className="text-center py-8 text-slate-500 dark:text-slate-400">
                   <div className="flex flex-col items-center gap-2">
                     <Search className="w-8 h-8 text-slate-400" />
                     <p>No campaigns found</p>
@@ -121,11 +123,16 @@ export function MetaCampaignTable({ campaigns, loading }: MetaCampaignTableProps
               </tr>
             ) : (
               sortedCampaigns.map((campaign) => (
-                <tr key={campaign.id} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <tr
+                  key={campaign.id}
+                  className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+                >
                   <td className="px-4 py-3">
-                    <div className="font-medium text-slate-900 dark:text-white text-sm">
-                      {campaign.name}
-                    </div>
+                    {onCampaignClick && (
+                      <div className="font-medium text-slate-900 cursor-pointer hover:text-blue-500 dark:text-white text-sm" onClick={() => onCampaignClick(campaign.id)} >
+                        {campaign.name}
+                      </div>
+                    )}
                     {campaign.objective && (
                       <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         Objective: {campaign.objective}
@@ -146,7 +153,6 @@ export function MetaCampaignTable({ campaigns, loading }: MetaCampaignTableProps
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
                     {campaign.clicks.toLocaleString()}
                   </td>
-         
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
                     {campaign.ctr.toFixed(2)}%
                   </td>
@@ -156,20 +162,30 @@ export function MetaCampaignTable({ campaigns, loading }: MetaCampaignTableProps
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
                     {campaign.conversions.toLocaleString()}
                   </td>
-                            <td className="px-4 py-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
-      ${campaign.conversionValue.toFixed(2)}  {/* ✅ NEW */}
-    </td>
-     <td className="px-4 py-3 text-right">
-      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-        campaign.roas > 2 
-          ? 'bg-emerald-500/15 text-emerald-500' 
-          : campaign.roas > 1 
-            ? 'bg-amber-500/15 text-amber-500'
-            : 'bg-red-500/15 text-red-500'
-      }`}>
-        {campaign.roas > 0 ? campaign.roas.toFixed(2) + 'x' : '0x'}  {/* ✅ NEW */}
-      </span>
-    </td>
+                  <td className="px-4 py-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
+                    ${campaign.conversionValue.toFixed(2)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${campaign.roas > 2
+                      ? 'bg-emerald-500/15 text-emerald-500'
+                      : campaign.roas > 1
+                        ? 'bg-amber-500/15 text-amber-500'
+                        : 'bg-red-500/15 text-red-500'
+                      }`}>
+                      {campaign.roas > 0 ? campaign.roas.toFixed(2) + 'x' : '0x'}
+                    </span>
+                  </td>
+                  {/* <td className="px-4 py-3 text-center">
+                    {onCampaignClick && (
+                      <button
+                        onClick={() => onCampaignClick(campaign.id)}
+                        className="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors flex items-center gap-1 mx-auto"
+                      >
+                        View
+                        <ChevronRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </td> */}
                 </tr>
               ))
             )}
