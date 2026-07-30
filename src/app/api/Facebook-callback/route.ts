@@ -8,10 +8,8 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "No code provided" }, { status: 400 });
     }
 
-    // ✅ CHANGE THIS: Use your Vercel URL
-    const baseUrl = process.env.NODE_ENV === 'production'
-        ? 'https://marketing-lovat-iota-62.vercel.app'  // ← YOUR VERCEL URL
-        : 'http://localhost:3000';
+    const url = new URL(request.url);
+    const baseUrl = `${url.protocol}//${url.host}`;
     
     const redirectUri = `${baseUrl}/api/Facebook-callback`;
 

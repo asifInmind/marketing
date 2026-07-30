@@ -611,6 +611,96 @@ export async function fetchAllCampaignsInsights(
   }
 }
 
+export async function fetchAllAdSetsInsights(
+  config: MetaConfig
+): Promise<Record<string, MetaInsights>> {
+  const cleanActId = config.accountId.startsWith('act_') 
+    ? config.accountId 
+    : `act_${config.accountId}`;
+  
+  const dateRange = config.dateRange || { preset: META_API.DEFAULT_DATE_PRESET };
+  
+  const params: any = {
+    fields: INSIGHTS_FIELDS_ALL,
+    level: 'adset',
+    limit: 150
+  };
+  
+  if (dateRange.since && dateRange.until) {
+    params.time_range = { since: dateRange.since, until: dateRange.until };
+  } else {
+    params.date_preset = dateRange.preset || META_API.DEFAULT_DATE_PRESET;
+  }
+  
+  try {
+    console.log(`📡 Fetching all adset insights...`);
+    const result = await metaQueue.add(() => 
+      callMetaApi<PaginatedResponse<MetaInsights>>(
+        `${cleanActId}/insights`,
+        params,
+        config
+      )
+    );
+    
+    const insightsMap: Record<string, MetaInsights> = {};
+    result.data?.forEach(insight => {
+      if (insight.adset_id) {
+        insightsMap[insight.adset_id] = insight;
+      }
+    });
+    console.log(`✅ Fetched ${Object.keys(insightsMap).length} adset insights`);
+    return insightsMap;
+  } catch (error) {
+    console.warn('⚠️ Failed to fetch adset insights:', error);
+    return {};
+  }
+}
+
+export async function fetchAllAdsInsights(
+  config: MetaConfig
+): Promise<Record<string, MetaInsights>> {
+  const cleanActId = config.accountId.startsWith('act_') 
+    ? config.accountId 
+    : `act_${config.accountId}`;
+  
+  const dateRange = config.dateRange || { preset: META_API.DEFAULT_DATE_PRESET };
+  
+  const params: any = {
+    fields: INSIGHTS_FIELDS_ALL,
+    level: 'ad',
+    limit: 150
+  };
+  
+  if (dateRange.since && dateRange.until) {
+    params.time_range = { since: dateRange.since, until: dateRange.until };
+  } else {
+    params.date_preset = dateRange.preset || META_API.DEFAULT_DATE_PRESET;
+  }
+  
+  try {
+    console.log(`📡 Fetching all ad insights...`);
+    const result = await metaQueue.add(() => 
+      callMetaApi<PaginatedResponse<MetaInsights>>(
+        `${cleanActId}/insights`,
+        params,
+        config
+      )
+    );
+    
+    const insightsMap: Record<string, MetaInsights> = {};
+    result.data?.forEach(insight => {
+      if (insight.ad_id) {
+        insightsMap[insight.ad_id] = insight;
+      }
+    });
+    console.log(`✅ Fetched ${Object.keys(insightsMap).length} ad insights`);
+    return insightsMap;
+  } catch (error) {
+    console.warn('⚠️ Failed to fetch ad insights:', error);
+    return {};
+  }
+}
+
 // ============================================
 // 6. LOAD MORE FUNCTIONS
 // ============================================
@@ -747,13 +837,14 @@ export async function loadCreativesForAds(
 
 export async function fetchCompleteDashboard(
   config: MetaConfig,
-  pageSize: number = META_API.PAGE_SIZE
+  pageSize: number = META_API.PAGE_SIZE,
+  includeInsights: boolean = true
 ): Promise<DashboardData> {
   const loadingState = {
     campaigns: true,
     adSets: true,
     ads: true,
-    insights: true,
+    insights: true, // we set to true initially, will change if loaded or skipped
     creatives: false,
   };
   
@@ -777,37 +868,47 @@ export async function fetchCompleteDashboard(
     loadingState.adSets = false;
     loadingState.ads = false;
     
-    // Step 2: Fetch insights in parallel with rate limiting
-    const campaignIds = campaignsResult.data.map(c => c.id);
-    const adSetIds = adSetsResult.data.map(a => a.id);
-    const adIds = adsResult.data.map(a => a.id);
+    let campaignInsights: Record<string, MetaInsights> = {};
+    let adSetInsights: Record<string, MetaInsights> = {};
+    let adInsights: Record<string, MetaInsights> = {};
     
-    console.log(`📡 Fetching insights for ${campaignIds.length} campaigns, ${adSetIds.length} ad sets, ${adIds.length} ads...`);
+    let totalSpend = 0;
+    let totalImpressions = 0;
+    let totalClicks = 0;
+    let totalConversions = 0;
+    let totalRevenue = 0;
+    let avgCTR = 0;
+    let avgCPC = 0;
+    let avgROAS = 0;
     
-    const [campaignInsights, adSetInsights, adInsights] = await Promise.all([
-      fetchAllCampaignsInsights(config),
-      fetchInsightsBatch(adSetIds, 'adset', config),
-      fetchInsightsBatch(adIds, 'ad', config)
-    ]);
-    
-    console.log(`✅ Insights fetched: ${Object.keys(campaignInsights).length} campaigns, ${Object.keys(adSetInsights).length} ad sets, ${Object.keys(adInsights).length} ads`);
-    
-    loadingState.insights = false;
-    
-    // Step 3: Build summary
-    const allInsights = Object.values(campaignInsights);
-    const totalSpend = allInsights.reduce((sum, i) => sum + (i.spend || 0), 0);
-    const totalImpressions = allInsights.reduce((sum, i) => sum + (i.impressions || 0), 0);
-    const totalClicks = allInsights.reduce((sum, i) => sum + (i.clicks || 0), 0);
-    const totalConversions = allInsights.reduce((sum, i) => sum + (i.conversions || 0), 0);
-    const totalRevenue = allInsights.reduce((sum, i) => sum + (i.conversion_values || 0), 0);
+    if (includeInsights) {
+      console.log(`📡 Fetching insights for campaigns, ad sets, ads...`);
+      
+      [campaignInsights, adSetInsights, adInsights] = await Promise.all([
+        fetchAllCampaignsInsights(config),
+        fetchAllAdSetsInsights(config),
+        fetchAllAdsInsights(config)
+      ]);
+      
+      console.log(`✅ Insights fetched: ${Object.keys(campaignInsights).length} campaigns, ${Object.keys(adSetInsights).length} ad sets, ${Object.keys(adInsights).length} ads`);
+      
+      loadingState.insights = false;
+      
+      // Build summary
+      const allInsights = Object.values(campaignInsights);
+      totalSpend = allInsights.reduce((sum, i) => sum + (i.spend || 0), 0);
+      totalImpressions = allInsights.reduce((sum, i) => sum + (i.impressions || 0), 0);
+      totalClicks = allInsights.reduce((sum, i) => sum + (i.clicks || 0), 0);
+      totalConversions = allInsights.reduce((sum, i) => sum + (i.conversions || 0), 0);
+      totalRevenue = allInsights.reduce((sum, i) => sum + (i.conversion_values || 0), 0);
+      
+      avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+      avgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
+      avgROAS = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+    }
     
     const activeCampaigns = campaignsResult.data.filter(c => c.status === 'ACTIVE').length;
     const pausedCampaigns = campaignsResult.data.filter(c => c.status === 'PAUSED').length;
-    
-    const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
-    const avgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
-    const avgROAS = totalSpend > 0 ? totalRevenue / totalSpend : 0;
     
     return {
       campaigns: campaignsResult.data,
@@ -829,6 +930,7 @@ export async function fetchCompleteDashboard(
         avgCTR,
         avgCPC,
         avgROAS,
+        averageROAS: avgROAS,
         activeCampaigns,
         pausedCampaigns
       },
@@ -879,6 +981,7 @@ export async function fetchCompleteDashboard(
         avgCTR: 0,
         avgCPC: 0,
         avgROAS: 0,
+        averageROAS: 0,
         activeCampaigns: 0,
         pausedCampaigns: 0
       },
@@ -890,5 +993,51 @@ export async function fetchCompleteDashboard(
       loading: loadingState,
       errors: errors
     };
+  }
+}
+
+export async function fetchDashboardInsightsOnly(
+  config: MetaConfig
+): Promise<any> {
+  try {
+    console.log('📡 Progressive load: Fetching insights only...');
+    
+    const [campaignInsights, adSetInsights, adInsights] = await Promise.all([
+      fetchAllCampaignsInsights(config),
+      fetchAllAdSetsInsights(config),
+      fetchAllAdsInsights(config)
+    ]);
+    
+    // Build summary
+    const allInsights = Object.values(campaignInsights);
+    const totalSpend = allInsights.reduce((sum, i) => sum + (i.spend || 0), 0);
+    const totalImpressions = allInsights.reduce((sum, i) => sum + (i.impressions || 0), 0);
+    const totalClicks = allInsights.reduce((sum, i) => sum + (i.clicks || 0), 0);
+    const totalConversions = allInsights.reduce((sum, i) => sum + (i.conversions || 0), 0);
+    const totalRevenue = allInsights.reduce((sum, i) => sum + (i.conversion_values || 0), 0);
+    
+    const avgCTR = totalImpressions > 0 ? (totalClicks / totalImpressions) * 100 : 0;
+    const avgCPC = totalClicks > 0 ? totalSpend / totalClicks : 0;
+    const avgROAS = totalSpend > 0 ? totalRevenue / totalSpend : 0;
+    
+    return {
+      campaignInsights,
+      adSetInsights,
+      adInsights,
+      summary: {
+        totalSpend,
+        totalImpressions,
+        totalClicks,
+        totalConversions,
+        totalRevenue,
+        avgCTR,
+        avgCPC,
+        avgROAS,
+        averageROAS: avgROAS
+      }
+    };
+  } catch (error) {
+    console.error('❌ Failed to fetch insights progressively:', error);
+    throw error;
   }
 }

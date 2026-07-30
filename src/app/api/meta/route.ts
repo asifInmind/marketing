@@ -3,7 +3,7 @@
 // ============================================
 
 import { NextRequest, NextResponse } from 'next/server';
-import { fetchCompleteDashboard } from '../../../lib/api/metaApi';
+import { fetchCompleteDashboard, fetchDashboardInsightsOnly } from '../../../lib/api/metaApi';
 import type { MetaConfig } from '../../../lib/types/meta.types';
 
 export async function GET(request: NextRequest) {
@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
     const since = searchParams.get('since') || undefined;
     const until = searchParams.get('until') || undefined;
     const pageSize = parseInt(searchParams.get('page_size') || '100');
+    const type = searchParams.get('type') || 'all';
 
     if (!accessToken) {
       return NextResponse.json(
@@ -41,11 +42,18 @@ export async function GET(request: NextRequest) {
       pageSize,
     };
 
-    const dashboardData = await fetchCompleteDashboard(config);
+    let data;
+    if (type === 'structure') {
+      data = await fetchCompleteDashboard(config, pageSize, false);
+    } else if (type === 'insights') {
+      data = await fetchDashboardInsightsOnly(config);
+    } else {
+      data = await fetchCompleteDashboard(config, pageSize, true);
+    }
 
     return NextResponse.json({
       success: true,
-      data: dashboardData,
+      data: data,
     });
 
   } catch (error: any) {

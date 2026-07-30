@@ -1,10 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
-  // ✅ CHANGE THIS: Use your Vercel URL
-  const baseUrl = process.env.NODE_ENV === 'production'
-    ? 'https://marketing-lovat-iota-62.vercel.app'  // ← YOUR VERCEL URL
-    : 'http://localhost:3000';
+export async function GET(request: NextRequest) {
+  const url = new URL(request.url);
+  const baseUrl = `${url.protocol}//${url.host}`;
     
   const redirectUri = encodeURIComponent(`${baseUrl}/api/Facebook-callback`);
   const appId = process.env.FB_APP_ID;

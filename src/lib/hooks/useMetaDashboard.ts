@@ -33,6 +33,7 @@ interface UseMetaDashboardReturn {
   
   // Loading states
   loading: boolean;
+  loadingInsights: boolean;
   loadingMore: {
     campaigns: boolean;
     adSets: boolean;
@@ -63,6 +64,7 @@ export function useMetaDashboard(
 ): UseMetaDashboardReturn {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingInsights, setLoadingInsights] = useState(true);
   const [loadingMore, setLoadingMore] = useState({
     campaigns: false,
     adSets: false,
@@ -102,20 +104,12 @@ export function useMetaDashboard(
   }, [data]);
   
   // Fetch dashboard data
-  // In src/lib/hooks/useMetaDashboard.ts
-
-// Replace the fetchDashboard function with this:
-const fetchDashboard = useCallback(async () => {
-  setLoading(true);
-  setError(null);
-  
-  try {
-        console.log('📡 Fetching dashboard data...');
-    console.log('🔑 Access Token:', configRef.current.accessToken?.substring(0, 20) + '...');
-    console.log('📋 Account ID:', configRef.current.accountId);
-    console.log('📅 Date Range:', configRef.current.dateRange);
-    // Use the API route
-    const params = new URLSearchParams({
+  const fetchDashboard = useCallback(async () => {
+    setLoading(true);
+    setLoadingInsights(true);
+    setError(null);
+    
+    const baseParams = new URLSearchParams({
       access_token: configRef.current.accessToken,
       account_id: configRef.current.accountId,
       date_preset: configRef.current.dateRange?.preset || 'last_30d',
@@ -123,32 +117,78 @@ const fetchDashboard = useCallback(async () => {
     });
 
     if (configRef.current.dateRange?.since) {
-      params.append('since', configRef.current.dateRange.since);
+      baseParams.append('since', configRef.current.dateRange.since);
     }
     if (configRef.current.dateRange?.until) {
-      params.append('until', configRef.current.dateRange.until);
+      baseParams.append('until', configRef.current.dateRange.until);
     }
 
-    const response = await fetch(`/api/meta?${params.toString()}`);
-    const result = await response.json();
-     console.log('✅ Raw API Result:', result);
-    console.log('📊 Campaigns count:', result.campaigns?.length || 0);
-    console.log('📊 Ad Sets count:', result.adSets?.length || 0);
-    console.log('📊 Ads count:', result.ads?.length || 0);
-    console.log('📊 Campaign Insights:', Object.keys(result.campaignInsights || {}).length);
+    try {
+      console.log('📡 Step 1: Fetching dashboard structure...');
+      const structParams = new URLSearchParams(baseParams);
+      structParams.append('type', 'structure');
 
-    if (!result.success) {
-      throw new Error(result.error || 'Failed to fetch dashboard data');
+      const structResponse = await fetch(`/api/meta?${structParams.toString()}`);
+      const structResult = await structResponse.json();
+
+      if (!structResult.success) {
+        throw new Error(structResult.error || 'Failed to fetch dashboard structure');
+      }
+
+      console.log('✅ Structure fetched:', {
+        campaigns: structResult.data.campaigns?.length || 0,
+        adSets: structResult.data.adSets?.length || 0,
+        ads: structResult.data.ads?.length || 0,
+      });
+
+      setData(structResult.data);
+      setLoading(false); // Stop structure loading spinner, show UI
+
+      // Step 2: Fetch insights in the background
+      console.log('📡 Step 2: Fetching dashboard insights...');
+      const insightsParams = new URLSearchParams(baseParams);
+      insightsParams.append('type', 'insights');
+
+      fetch(`/api/meta?${insightsParams.toString()}`)
+        .then(res => res.json())
+        .then(insightsResult => {
+          if (insightsResult.success) {
+            console.log('✅ Insights fetched successfully');
+            setData(prev => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                campaignInsights: insightsResult.data.campaignInsights || {},
+                adSetInsights: insightsResult.data.adSetInsights || {},
+                adInsights: insightsResult.data.adInsights || {},
+                summary: {
+                  ...prev.summary,
+                  ...insightsResult.data.summary,
+                },
+                loading: {
+                  ...prev.loading,
+                  insights: false
+                }
+              };
+            });
+          } else {
+            console.warn('⚠️ Insights fetching failed:', insightsResult.error);
+          }
+        })
+        .catch(err => {
+          console.warn('⚠️ Insights network error:', err);
+        })
+        .finally(() => {
+          setLoadingInsights(false);
+        });
+
+    } catch (err: any) {
+      setError(err.message || 'Failed to fetch dashboard data');
+      setData(null);
+      setLoading(false);
+      setLoadingInsights(false);
     }
-
-    setData(result.data);
-  } catch (err: any) {
-    setError(err.message || 'Failed to fetch dashboard data');
-    setData(null);
-  } finally {
-    setLoading(false);
-  }
-}, []);
+  }, []);
   
   // Load more function
   const loadMore = useCallback(async (type: 'campaigns' | 'adSets' | 'ads') => {
@@ -286,21 +326,23 @@ const fetchDashboard = useCallback(async () => {
     adSets: transformed?.adSets || [],
     ads: transformed?.ads || [],
     summary: data?.summary || {
-     totalCampaigns: data?.summary.totalCampaigns || 0,
-    totalAdSets: data?.summary.totalAdSets || 0,
-    totalAds: data?.summary.totalAds || 0,
-    totalSpend: data?.summary.totalSpend || 0,
-    totalImpressions: data?.summary.totalImpressions || 0,
-    totalClicks: data?.summary.totalClicks || 0,
-    totalConversions: data?.summary.totalConversions || 0,
-    totalRevenue: data?.summary.totalRevenue || 0,        // ✅ NEW
-    avgCTR: data?.summary.avgCTR || 0,
-    avgCPC: data?.summary.avgCPC || 0,
-    avgROAS: data?.summary.avgROAS || 0,                  // ✅ NEW
-    activeCampaigns: data?.summary.activeCampaigns || 0,
-    pausedCampaigns: data?.summary.pausedCampaigns || 0,
+      totalCampaigns: data?.summary.totalCampaigns || 0,
+      totalAdSets: data?.summary.totalAdSets || 0,
+      totalAds: data?.summary.totalAds || 0,
+      totalSpend: data?.summary.totalSpend || 0,
+      totalImpressions: data?.summary.totalImpressions || 0,
+      totalClicks: data?.summary.totalClicks || 0,
+      totalConversions: data?.summary.totalConversions || 0,
+      totalRevenue: data?.summary.totalRevenue || 0,
+      avgCTR: data?.summary.avgCTR || 0,
+      avgCPC: data?.summary.avgCPC || 0,
+      avgROAS: data?.summary.avgROAS || 0,
+      activeCampaigns: data?.summary.activeCampaigns || 0,
+      pausedCampaigns: data?.summary.pausedCampaigns || 0,
+      averageROAS: data?.summary.averageROAS || 0,
     },
     loading,
+    loadingInsights,
     loadingMore,
     loadingCreatives,
     hasMore: {

@@ -108,7 +108,7 @@ export function MetaMetricCards({ summary, loading }: MetaMetricCardsProps) {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
         <MetricCard
           title="Total Spend"
           value={`$${summary?.totalSpend?.toFixed(2) || '0.00'}`}
@@ -149,46 +149,14 @@ export function MetaMetricCards({ summary, loading }: MetaMetricCardsProps) {
           color="bg-indigo-500"
           loading={loading}
         />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-gradient-to-br from-indigo-500/10 to-purple-500/10 dark:from-indigo-500/20 dark:to-purple-500/20 rounded-xl border border-indigo-200 dark:border-indigo-800 p-5 col-span-1 md:col-span-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-indigo-500">
-                <Percent className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">ROAS (Return on Ad Spend)</p>
-                <div className="flex items-center gap-3">
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white">
-                    {loading ? '...' : roasDisplay}
-                  </p>
-                  <span className={`text-sm font-medium px-2.5 py-1 rounded-full ${
-                    !summary?.averageROAS || summary.averageROAS === 0
-                      ? 'bg-slate-500/15 text-slate-500'
-                      : summary.averageROAS > 2 
-                        ? 'bg-emerald-500/15 text-emerald-500' 
-                        : summary.averageROAS > 1 
-                          ? 'bg-amber-500/15 text-amber-500'
-                          : 'bg-red-500/15 text-red-500'
-                  }`}>
-                    {loading ? 'Loading...' : getROASSubtitle(summary?.averageROAS || 0)}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div className="text-right hidden sm:block">
-              <p className="text-xs text-slate-400">Revenue ÷ Spend</p>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-300">
-                ${(summary?.totalRevenue || 0).toFixed(2)} ÷ ${(summary?.totalSpend || 0).toFixed(2)}
-                <span className="text-slate-400 ml-1">
-                  = {(summary?.averageROAS || 0) > 0 ? (summary?.averageROAS || 0).toFixed(2) : '0.00'}x
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
+        <MetricCard
+          title="ROAS"
+          value={roasDisplay}
+          icon={Percent}
+          color="bg-violet-600"
+          loading={loading}
+          subtitle={getROASSubtitle(summary?.averageROAS || 0)}
+        />
       </div>
     </>
   );

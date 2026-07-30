@@ -8,9 +8,10 @@ import type { TransformedAdSet } from '../../lib/types/meta.types';
 interface MetaAdSetTableProps {
   adSets: TransformedAdSet[];
   loading: boolean;
+  loadingInsights?: boolean;
 }
 
-export function MetaAdSetTable({ adSets, loading }: MetaAdSetTableProps) {
+export function MetaAdSetTable({ adSets, loading, loadingInsights = false }: MetaAdSetTableProps) {
   if (loading) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -81,19 +82,39 @@ export function MetaAdSetTable({ adSets, loading }: MetaAdSetTableProps) {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    {adSet.impressions.toLocaleString()}
+                    {loadingInsights ? (
+                      <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      adSet.impressions.toLocaleString()
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    {adSet.clicks.toLocaleString()}
+                    {loadingInsights ? (
+                      <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      adSet.clicks.toLocaleString()
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    {adSet.ctr.toFixed(2)}%
+                    {loadingInsights ? (
+                      <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      `${adSet.ctr.toFixed(2)}%`
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    ${adSet.cost.toFixed(2)}
+                    {loadingInsights ? (
+                      <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      `$${adSet.cost.toFixed(2)}`
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    {adSet.conversions.toLocaleString()}
+                    {loadingInsights ? (
+                      <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      adSet.conversions.toLocaleString()
+                    )}
                   </td>
                 </tr>
               ))

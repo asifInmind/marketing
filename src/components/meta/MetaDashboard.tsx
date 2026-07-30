@@ -36,6 +36,7 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
     ads,
     summary,
     loading,
+    loadingInsights,
     loadingMore,
     loadingCreatives,
     hasMore,
@@ -151,10 +152,10 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
               </div>
               <button
                 onClick={refresh}
-                disabled={loading}
+                disabled={loading || loadingInsights}
                 className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors disabled:opacity-50"
               >
-                <RefreshCw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 text-slate-500 ${loading || loadingInsights ? 'animate-spin' : ''}`} />
               </button>
             </div>
           </div>
@@ -177,7 +178,7 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
         ) : (
           <>
             {/* Summary Cards */}
-            <MetaMetricCards summary={summary} loading={loading} />
+            <MetaMetricCards summary={summary} loading={loading || loadingInsights} />
 
             {/* Tabs */}
             <div className="border-b border-slate-200 dark:border-slate-800">
@@ -230,7 +231,8 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                 <MetaCampaignTable
                   campaigns={campaigns}
                   loading={loading}
-                  onCampaignClick={handleCampaignClick} // ✅ NEW
+                  loadingInsights={loadingInsights}
+                  onCampaignClick={handleCampaignClick}
                 />
                 <MetaLoadMoreButton
                   hasMore={hasMore.campaigns}
@@ -243,7 +245,11 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
 
             {activeTab === 'adSets' && (
               <>
-                <MetaAdSetTable adSets={adSets} loading={loading} />
+                <MetaAdSetTable
+                  adSets={adSets}
+                  loading={loading}
+                  loadingInsights={loadingInsights}
+                />
                 <MetaLoadMoreButton
                   hasMore={hasMore.adSets}
                   loading={loadingMore.adSets}
@@ -255,7 +261,12 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
 
             {activeTab === 'ads' && (
               <>
-                <MetaAdTable ads={ads} loading={loading} loadingCreatives={loadingCreatives} />
+                <MetaAdTable
+                  ads={ads}
+                  loading={loading}
+                  loadingInsights={loadingInsights}
+                  loadingCreatives={loadingCreatives}
+                />
                 <MetaLoadMoreButton
                   hasMore={hasMore.ads}
                   loading={loadingMore.ads}

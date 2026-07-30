@@ -8,10 +8,11 @@ import type { TransformedCampaign } from '../../lib/types/meta.types';
 interface MetaCampaignTableProps {
   campaigns: TransformedCampaign[];
   loading: boolean;
+  loadingInsights?: boolean;
   onCampaignClick?: (campaignId: string) => void; // ✅ NEW
 }
 
-export function MetaCampaignTable({ campaigns, loading, onCampaignClick }: MetaCampaignTableProps) {
+export function MetaCampaignTable({ campaigns, loading, loadingInsights = false, onCampaignClick }: MetaCampaignTableProps) {
   const [sortField, setSortField] = useState<keyof TransformedCampaign>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -148,32 +149,60 @@ export function MetaCampaignTable({ campaigns, loading, onCampaignClick }: MetaC
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    {campaign.impressions.toLocaleString()}
+                    {loadingInsights ? (
+                      <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      campaign.impressions.toLocaleString()
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    {campaign.clicks.toLocaleString()}
+                    {loadingInsights ? (
+                      <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      campaign.clicks.toLocaleString()
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    {campaign.ctr.toFixed(2)}%
+                    {loadingInsights ? (
+                      <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      `${campaign.ctr.toFixed(2)}%`
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    ${campaign.cost.toFixed(2)}
+                    {loadingInsights ? (
+                      <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      `$${campaign.cost.toFixed(2)}`
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
-                    {campaign.conversions.toLocaleString()}
+                    {loadingInsights ? (
+                      <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      campaign.conversions.toLocaleString()
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right font-medium text-emerald-600 dark:text-emerald-400">
-                    ${campaign.conversionValue.toFixed(2)}
+                    {loadingInsights ? (
+                      <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      `$${campaign.conversionValue.toFixed(2)}`
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${campaign.roas > 2
-                      ? 'bg-emerald-500/15 text-emerald-500'
-                      : campaign.roas > 1
-                        ? 'bg-amber-500/15 text-amber-500'
-                        : 'bg-red-500/15 text-red-500'
-                      }`}>
-                      {campaign.roas > 0 ? campaign.roas.toFixed(2) + 'x' : '0x'}
-                    </span>
+                    {loadingInsights ? (
+                      <div className="h-4 w-12 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
+                    ) : (
+                      <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${campaign.roas > 2
+                        ? 'bg-emerald-500/15 text-emerald-500'
+                        : campaign.roas > 1
+                          ? 'bg-amber-500/15 text-amber-500'
+                          : 'bg-red-500/15 text-red-500'
+                        }`}>
+                        {campaign.roas > 0 ? campaign.roas.toFixed(2) + 'x' : '0x'}
+                      </span>
+                    )}
                   </td>
                   {/* <td className="px-4 py-3 text-center">
                     {onCampaignClick && (
