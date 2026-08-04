@@ -9,9 +9,26 @@ interface MetaAdTableProps {
   loading: boolean;
   loadingInsights?: boolean;
   loadingCreatives: boolean;
+  currencyCode?: string;
 }
 
-export function MetaAdTable({ ads, loading, loadingInsights = false, loadingCreatives }: MetaAdTableProps) {
+export function MetaAdTable({ 
+  ads, 
+  loading, 
+  loadingInsights = false, 
+  loadingCreatives,
+  currencyCode = 'USD'
+}: MetaAdTableProps) {
+  const formatVal = (amount: number) => {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyCode,
+      }).format(amount);
+    } catch {
+      return `${currencyCode} ${amount.toFixed(2)}`;
+    }
+  };
   if (loading) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -129,7 +146,7 @@ export function MetaAdTable({ ads, loading, loadingInsights = false, loadingCrea
                     {loadingInsights ? (
                       <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
                     ) : (
-                      `$${ad.cost.toFixed(2)}`
+                      formatVal(ad.cost)
                     )}
                   </td>
                 </tr>

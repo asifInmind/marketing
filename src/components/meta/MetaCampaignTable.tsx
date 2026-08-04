@@ -9,10 +9,27 @@ interface MetaCampaignTableProps {
   campaigns: TransformedCampaign[];
   loading: boolean;
   loadingInsights?: boolean;
-  onCampaignClick?: (campaignId: string) => void; // ✅ NEW
+  onCampaignClick?: (campaignId: string) => void;
+  currencyCode?: string;
 }
 
-export function MetaCampaignTable({ campaigns, loading, loadingInsights = false, onCampaignClick }: MetaCampaignTableProps) {
+export function MetaCampaignTable({ 
+  campaigns, 
+  loading, 
+  loadingInsights = false, 
+  onCampaignClick,
+  currencyCode = 'USD'
+}: MetaCampaignTableProps) {
+  const formatVal = (amount: number) => {
+    try {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currencyCode,
+      }).format(amount);
+    } catch {
+      return `${currencyCode} ${amount.toFixed(2)}`;
+    }
+  };
   const [sortField, setSortField] = useState<keyof TransformedCampaign>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchTerm, setSearchTerm] = useState('');
@@ -173,7 +190,7 @@ export function MetaCampaignTable({ campaigns, loading, loadingInsights = false,
                     {loadingInsights ? (
                       <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
                     ) : (
-                      `$${campaign.cost.toFixed(2)}`
+                      formatVal(campaign.cost)
                     )}
                   </td>
                   <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-300">
@@ -187,7 +204,7 @@ export function MetaCampaignTable({ campaigns, loading, loadingInsights = false,
                     {loadingInsights ? (
                       <div className="h-4 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded ml-auto" />
                     ) : (
-                      `$${campaign.conversionValue.toFixed(2)}`
+                      formatVal(campaign.conversionValue)
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">

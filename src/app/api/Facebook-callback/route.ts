@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
     const url = new URL(request.url);
     const baseUrl = `${url.protocol}//${url.host}`;
-    
+
     const redirectUri = `${baseUrl}/api/Facebook-callback`;
 
     const tokenRes = await fetch(
@@ -30,9 +30,29 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Failed to get access token" }, { status: 500 });
     }
 
+    // Exchange short-lived token (2 hours) for a long-lived token (60 days)
+    let finalToken = accessToken;
+    try {
+        const longLivedTokenRes = await fetch(
+            `https://graph.facebook.com/v18.0/oauth/access_token?` +
+            new URLSearchParams({
+                grant_type: 'fb_exchange_token',
+                client_id: process.env.FB_APP_ID!,
+                client_secret: process.env.FB_APP_SECRET!,
+                fb_exchange_token: accessToken,
+            })
+        );
+        const longLivedTokenData = await longLivedTokenRes.json();
+        if (longLivedTokenData.access_token) {
+            finalToken = longLivedTokenData.access_token;
+        }
+    } catch (err) {
+        console.error('Failed to exchange for long-lived Meta token, using short-lived fallback:', err);
+    }
+
     // Fetch user's ad accounts
     const adAccountsRes = await fetch(
-        `https://graph.facebook.com/v18.0/me/adaccounts?access_token=${accessToken}`
+        `https://graph.facebook.com/v18.0/me/adaccounts?access_token=${finalToken}`
     );
     const adAccountsData = await adAccountsRes.json();
 
@@ -44,6 +64,6 @@ export async function GET(request: Request) {
 
     // ✅ CHANGE THIS: Redirect to your Vercel URL
     return NextResponse.redirect(
-        `${baseUrl}/choice?act_id=${firstAccountId.replace('act_', '')}&access_token=${accessToken}`
+        `${baseUrl}/choice?act_id=${firstAccountId.replace('act_', '')}&access_token=${finalToken}`
     );
 }

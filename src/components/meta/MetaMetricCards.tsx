@@ -6,22 +6,41 @@ import {
   MousePointerClick,
   Eye,
   Target,
-  TrendingUp,
-  TrendingDown,
   Wallet,
-  Percent,  // ✅ ADD THIS - was missing!
+  Percent,
 } from 'lucide-react';
 import type { DashboardData } from '../../lib/types/meta.types';
 
 interface MetaMetricCardsProps {
   summary: DashboardData['summary'];
   loading: boolean;
+  shopifyConnected?: boolean;
+  shopifySummary?: {
+    totalRevenue: number;
+    totalOrders: number;
+    totalCustomers: number;
+    currency: string;
+  };
 }
+
+const formatCurrency = (amount: number, currency: string) => {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`;
+  }
+};
 
 const MetricCard = ({
   title,
   value,
-  change,
+  secondaryTitle,
+  secondaryValue,
   icon: Icon,
   color,
   loading,
@@ -29,7 +48,8 @@ const MetricCard = ({
 }: {
   title: string;
   value: string | number;
-  change?: { value: number; isPositive: boolean };
+  secondaryTitle?: string;
+  secondaryValue?: string | number;
   icon: React.ElementType;
   color: string;
   loading: boolean;
@@ -50,30 +70,42 @@ const MetricCard = ({
     );
   }
 
+  const isDouble = secondaryValue !== undefined;
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 hover:shadow-md transition-shadow duration-200">
-      <div className="flex items-center justify-between">
-        <div className={`p-2.5 rounded-lg ${color}`}>
-          <Icon className="w-5 h-5 text-white" />
+      <div className="flex items-center justify-between mb-3">
+        <div className={`p-2 rounded-lg ${color}`}>
+          <Icon className="w-4 h-4 text-white" />
         </div>
-        {/* {change && (
-          <span className={`text-xs font-medium flex items-center gap-0.5 ${
-            change.isPositive ? 'text-emerald-500' : 'text-red-500'
-          }`}>
-            {change.isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {change.value}%
-          </span>
-        )} */}
       </div>
-      <div className="mt-3">
-        <p className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
-          {typeof value === 'number' && value > 1000 ? value.toLocaleString() : value}
-        </p>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{title}</p>
+      <div>
+        {isDouble ? (
+          <div className="grid grid-cols-2 gap-2 divide-x divide-slate-100 dark:divide-slate-800">
+            <div>
+              <p className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+                {typeof value === 'number' && value > 1000 ? value.toLocaleString() : value}
+              </p>
+              <p className="text-[10px] uppercase font-semibold text-slate-400 mt-0.5">{title}</p>
+            </div>
+            <div className="pl-4">
+              <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">
+                {typeof secondaryValue === 'number' && secondaryValue > 1000 ? secondaryValue.toLocaleString() : secondaryValue}
+              </p>
+              <p className="text-[10px] uppercase font-semibold text-slate-400 mt-0.5">{secondaryTitle}</p>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              {typeof value === 'number' && value > 1000 ? value.toLocaleString() : value}
+            </p>
+            <p className="text-xs uppercase font-semibold text-slate-400 mt-0.5">{title}</p>
+          </div>
+        )}
+
         {subtitle && (
-          <p className={`text-xs font-medium mt-1 ${
-            typeof value === 'number' && value > 1 ? 'text-emerald-500' : 'text-amber-500'
-          }`}>
+          <p className="text-[10px] font-medium mt-2 text-slate-400 dark:text-slate-500">
             {subtitle}
           </p>
         )}
@@ -82,82 +114,108 @@ const MetricCard = ({
   );
 };
 
-export function MetaMetricCards({ summary, loading }: MetaMetricCardsProps) {
-  // Calculate change percentages (mock for now)
-  const changes = {
-    spend: { value: 12.5, isPositive: true },
-    clicks: { value: 8.3, isPositive: true },
-    impressions: { value: 5.7, isPositive: true },
-    conversions: { value: 15.2, isPositive: true },
-    revenue: { value: 22.1, isPositive: true },
-  };
-
-  // Format ROAS as multiplier (e.g., 2.5x)
-  const roasDisplay = summary?.averageROAS && summary.averageROAS > 0 
-    ? `${summary.averageROAS.toFixed(2)}x` 
+export function MetaMetricCards({
+  summary,
+  loading,
+  shopifyConnected = false,
+  shopifySummary
+}: MetaMetricCardsProps) {
+  // Format ROAS
+  const roasDisplay = summary?.averageROAS && summary.averageROAS > 0
+    ? `${summary.averageROAS.toFixed(2)}x`
     : '0x';
 
-  // Determine ROAS performance
+  // Calculate blended ROAS (MER)
+  const blendedROAS = shopifySummary && summary?.totalSpend && summary.totalSpend > 0
+    ? shopifySummary.totalRevenue / summary.totalSpend
+    : 0;
+
+  const blendedROASDisplay = blendedROAS > 0
+    ? `${blendedROAS.toFixed(2)}x`
+    : '0.00x';
+
   const getROASSubtitle = (roas: number) => {
     if (roas === 0) return 'No revenue yet';
-    if (roas > 3) return '🚀 Excellent ROI';
-    if (roas > 2) return '✅ Good ROI';
-    if (roas > 1) return '📈 Breaking even';
-    return '⚠️ Below break-even';
+    if (roas > 3) return 'Excellent ROI';
+    if (roas > 2) return 'Good ROI';
+    if (roas > 1) return 'Breaking even';
+    return 'Below break-even';
   };
 
+  const activeCurrency = shopifyConnected && shopifySummary ? shopifySummary.currency : 'USD';
+
+  const gridClass = shopifyConnected
+    ? "grid grid-cols-1 md:grid-cols-3 gap-4"
+    : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4";
+
   return (
-    <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-        <MetricCard
-          title="Total Spend"
-          value={`$${summary?.totalSpend?.toFixed(2) || '0.00'}`}
-          change={changes.spend}
-          icon={DollarSign}
-          color="bg-emerald-500"
-          loading={loading}
-        />
-        <MetricCard
-          title="Total Clicks"
-          value={summary?.totalClicks || 0}
-          change={changes.clicks}
-          icon={MousePointerClick}
-          color="bg-blue-500"
-          loading={loading}
-        />
-        <MetricCard
-          title="Total Impressions"
-          value={summary?.totalImpressions || 0}
-          change={changes.impressions}
-          icon={Eye}
-          color="bg-purple-500"
-          loading={loading}
-        />
-        <MetricCard
-          title="Conversions"
-          value={summary?.totalConversions || 0}
-          change={changes.conversions}
-          icon={Target}
-          color="bg-amber-500"
-          loading={loading}
-        />
-        <MetricCard
-          title="Revenue"
-          value={`$${summary?.totalRevenue?.toFixed(2) || '0.00'}`}
-          change={changes.revenue}
-          icon={Wallet}
-          color="bg-indigo-500"
-          loading={loading}
-        />
-        <MetricCard
-          title="ROAS"
-          value={roasDisplay}
-          icon={Percent}
-          color="bg-violet-600"
-          loading={loading}
-          subtitle={getROASSubtitle(summary?.averageROAS || 0)}
-        />
-      </div>
-    </>
+    <div className={gridClass}>
+      <MetricCard
+        title="Meta Spend"
+        value={formatCurrency(summary?.totalSpend || 0, activeCurrency)}
+        secondaryTitle="Shopify Orders"
+        secondaryValue={shopifyConnected ? shopifySummary?.totalOrders : undefined}
+        icon={DollarSign}
+        color="bg-emerald-500"
+        loading={loading}
+        subtitle={shopifyConnected ? 'Ad Spend vs Store Orders' : 'Total Marketing Spend'}
+      />
+      <MetricCard
+        title="Ad Clicks"
+        value={summary?.totalClicks || 0}
+        secondaryTitle="Store Customers"
+        secondaryValue={shopifyConnected ? shopifySummary?.totalCustomers : undefined}
+        icon={MousePointerClick}
+        color="bg-blue-500"
+        loading={loading}
+        subtitle={shopifyConnected ? 'Traffic vs Unique Buyers' : 'Total Ad Clicks'}
+      />
+      <MetricCard
+        title="Ad Impressions"
+        value={summary?.totalImpressions || 0}
+        icon={Eye}
+        color="bg-purple-500"
+        loading={loading}
+        subtitle="Marketing Audience Reach"
+      />
+      <MetricCard
+        title="Ad Conversions"
+        value={summary?.totalConversions || 0}
+        secondaryTitle="Store Orders"
+        secondaryValue={shopifyConnected ? shopifySummary?.totalOrders : undefined}
+        icon={Target}
+        color="bg-amber-500"
+        loading={loading}
+        subtitle={shopifyConnected ? 'Attributed vs Actual Orders' : 'Ad purchase conversions'}
+      />
+      <MetricCard
+        title="Ad Revenue"
+        value={formatCurrency(summary?.totalRevenue || 0, activeCurrency)}
+        secondaryTitle="Store Revenue"
+        secondaryValue={
+          shopifyConnected && shopifySummary
+            ? formatCurrency(shopifySummary.totalRevenue, shopifySummary.currency)
+            : undefined
+        }
+        icon={Wallet}
+        color="bg-indigo-500"
+        loading={loading}
+        subtitle={shopifyConnected ? 'Attributed vs Actual Sales' : 'Ad reported conversion value'}
+      />
+      <MetricCard
+        title="Meta ROAS"
+        value={roasDisplay}
+        secondaryTitle="Blended ROAS (MER)"
+        secondaryValue={shopifyConnected ? blendedROASDisplay : undefined}
+        icon={Percent}
+        color="bg-violet-600"
+        loading={loading}
+        subtitle={
+          shopifyConnected
+            ? `Blended ROAS: ${blendedROAS > 1 ? 'Profitable' : 'Below Break-Even'}`
+            : getROASSubtitle(summary?.averageROAS || 0)
+        }
+      />
+    </div>
   );
 }

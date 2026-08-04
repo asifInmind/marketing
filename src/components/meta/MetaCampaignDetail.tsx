@@ -14,6 +14,7 @@ interface MetaCampaignDetailProps {
     loadingMore: boolean;
     onLoadMore: () => void;
     onBack: () => void;
+    currencyCode?: string;
 }
 
 export function MetaCampaignDetail({
@@ -24,7 +25,18 @@ export function MetaCampaignDetail({
     loadingMore,
     onLoadMore,
     onBack,
+    currencyCode = 'USD'
 }: MetaCampaignDetailProps) {
+    const formatVal = (amount: number) => {
+        try {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currencyCode,
+            }).format(amount);
+        } catch {
+            return `${currencyCode} ${amount.toFixed(2)}`;
+        }
+    };
     if (!campaign) {
         return (
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-8 text-center">
@@ -82,7 +94,7 @@ export function MetaCampaignDetail({
                     <div>
                         <div className="text-xs text-slate-500 dark:text-slate-400">Total Spend</div>
                         <div className="text-sm font-semibold text-slate-900 dark:text-white">
-                            ${campaign.cost.toFixed(2)}
+                            {formatVal(campaign.cost)}
                         </div>
                     </div>
                     <div>
@@ -117,7 +129,7 @@ export function MetaCampaignDetail({
                     </span>
                 </div>
 
-                <MetaAdSetTable adSets={adSets} loading={loading} />
+                <MetaAdSetTable adSets={adSets} loading={loading} currencyCode={currencyCode} />
 
                 <MetaLoadMoreButton
                     hasMore={hasMore}
