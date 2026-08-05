@@ -141,3 +141,77 @@ If a Meta Ad's effective status is `ACTIVE` and has spend $> 0$, but the matched
   * **Ad Conversions vs. Store Orders**
   * **Ad Revenue vs. Banked Cash Revenue**
   * **Meta ROAS vs. Blended ROAS (MER)** (Total Store Sales $\div$ Total Meta Spend)
+
+---
+
+## 6. Shopify OAuth Flow (Automatic Connection)
+
+For merchants who want to connect Shopify automatically without generating manual tokens, the app implements a secure OAuth loop:
+
+```mermaid
+sequenceDiagram
+    participant Merchant as Merchant Browser
+    participant App as NextJS Server
+    participant Shopify as Shopify Partner Portal
+    
+    Merchant->>App: Submits Store URL + Meta config (to /api/shopify/login)
+    App->>Merchant: Redirects to Shopify Auth screen with scopes & state
+    Merchant->>Shopify: Approves App installation
+    Shopify->>App: Redirects to /api/shopify/callback?code=CODE&state=STATE
+    App->>Shopify: Exchanges CODE for Permanent Store Access Token
+    Shopify->>App: Returns store access token
+    App->>Merchant: Redirects back to Dashboard /choice with query parameters
+```
+
+* **Login Initiator**: **[shopify/login/route.ts](file:///e:/Office%20Projects/admanager/src/app/api/shopify/login/route.ts)**
+  Constructs the Shopify oauth authorize URL. It passes client id, scopes, and preserves the Facebook `access_token` and `act_id` inside the `state` parameter so the user doesn't lose their Meta session context.
+* **Auth Callback**: **[shopify/callback/route.ts](file:///e:/Office%20Projects/admanager/src/app/api/shopify/callback/route.ts)**
+  Exchanges the authorization code for a persistent Admin access token. Once obtained, it redirects the browser back to the Meta `/choice` configuration dashboard page.
+
+---
+
+## 7. Global Facebook Pixel Tracking
+
+The application is integrated with a global tracking pixel to monitor traffic and interactions:
+* **Script Location**: **[layout.tsx](file:///e:/Office%20Projects/admanager/src/app/layout.tsx#L31-L49)**
+* **Details**: Loaded synchronously in the HTML body. It initiates tracking under Pixel ID `978250051055927` and fires a `PageView` event automatically.
+
+---
+
+## 8. Directory & File Structure
+
+Here is a map of the important codebase files:
+
+* **Pages & Routing (`src/app/`)**:
+  * [page.tsx](file:///e:/Office%20Projects/admanager/src/app/page.tsx): Main entry point redirecting to the Home Page.
+  * [homePage/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/homePage/page.tsx): Landing panel where users select their Meta and Shopify login mode.
+  * [choice/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/choice/page.tsx): Lists Meta ad accounts retrieved from OAuth.
+  * [choice/\[accountID\]/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/choice/%5BaccountID%5D/page.tsx): The core dashboard routing page.
+  * `api/meta/route.ts`: Backend proxy server fetching Meta campaigns, ad sets, and creatives.
+  * `api/shopify/route.ts`: Backend proxy server querying Shopify REST endpoints for orders and inventory.
+
+* **UI Components (`src/components/`)**:
+  * `meta/`: Interactive tables, metrics widgets, detail drill-downs, and skeletal loaders.
+  * `shopify/`: Contains the [ShopifyConnectModal.tsx](file:///e:/Office%20Projects/admanager/src/components/shopify/ShopifyConnectModal.tsx) component.
+
+* **Business Logic & Libraries (`src/lib/`)**:
+  * `api/`: Outbound handlers communicating with external Graph and Shopify APIs.
+  * `hooks/`: Custom state hubs (`useMetaDashboard` and `useShopifyDashboard`) doing matches and computing Blended ROAS.
+
+---
+
+## 9. Data Storage (No Database Approach)
+
+To ensure privacy, ease of setup, and zero cloud hosting costs:
+* **Zero Database**: No database (e.g. Postgres, MongoDB) is used.
+* **Local Storage**: Critical credentials (like the Shopify Store URL and access tokens) are saved strictly inside the visitor's local web browser via `localStorage` (keys: `shopifyStoreUrl` and `shopifyAccessToken`).
+* **Session Passing**: Transient authorization contexts are passed directly through secure query strings between the login loops.
+
+---
+
+## 10. Local Environment Configurations
+
+To run the project locally, create a **[.env.local](file:///e:/Office%20Projects/admanager/.env.local)** file in the root directory with the following variables:
+
+
+

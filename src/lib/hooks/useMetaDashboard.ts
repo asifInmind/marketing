@@ -3,7 +3,25 @@
 // USE META DASHBOARD HOOK
 // ============================================
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+
+const EMPTY_ARRAY: any[] = [];
+const DEFAULT_META_SUMMARY = {
+  totalCampaigns: 0,
+  totalAdSets: 0,
+  totalAds: 0,
+  totalSpend: 0,
+  totalImpressions: 0,
+  totalClicks: 0,
+  totalConversions: 0,
+  totalRevenue: 0,
+  avgCTR: 0,
+  avgCPC: 0,
+  avgROAS: 0,
+  activeCampaigns: 0,
+  pausedCampaigns: 0,
+  averageROAS: 0,
+};
 import {
   fetchCompleteDashboard,
   loadMoreCampaigns,
@@ -91,8 +109,8 @@ export function useMetaDashboard(
     };
   }, [accessToken, accountId, dateRange]);
   
-  // Transform data
-  const transformedData = useCallback(() => {
+  // Transform data (memoized to prevent new array references on every render)
+  const transformed = useMemo(() => {
     if (!data) return null;
     
     return {
@@ -319,37 +337,26 @@ export function useMetaDashboard(
     }
   }, [dateRange]);
   
-  const transformed = transformedData();
+  const hasMore = useMemo(() => ({
+    campaigns: data?.pagination.campaigns.hasMore || false,
+    adSets: data?.pagination.adSets.hasMore || false,
+    ads: data?.pagination.ads.hasMore || false,
+  }), [
+    data?.pagination.campaigns.hasMore,
+    data?.pagination.adSets.hasMore,
+    data?.pagination.ads.hasMore
+  ]);
   
   return {
-    campaigns: transformed?.campaigns || [],
-    adSets: transformed?.adSets || [],
-    ads: transformed?.ads || [],
-    summary: data?.summary || {
-      totalCampaigns: data?.summary.totalCampaigns || 0,
-      totalAdSets: data?.summary.totalAdSets || 0,
-      totalAds: data?.summary.totalAds || 0,
-      totalSpend: data?.summary.totalSpend || 0,
-      totalImpressions: data?.summary.totalImpressions || 0,
-      totalClicks: data?.summary.totalClicks || 0,
-      totalConversions: data?.summary.totalConversions || 0,
-      totalRevenue: data?.summary.totalRevenue || 0,
-      avgCTR: data?.summary.avgCTR || 0,
-      avgCPC: data?.summary.avgCPC || 0,
-      avgROAS: data?.summary.avgROAS || 0,
-      activeCampaigns: data?.summary.activeCampaigns || 0,
-      pausedCampaigns: data?.summary.pausedCampaigns || 0,
-      averageROAS: data?.summary.averageROAS || 0,
-    },
+    campaigns: transformed?.campaigns || EMPTY_ARRAY,
+    adSets: transformed?.adSets || EMPTY_ARRAY,
+    ads: transformed?.ads || EMPTY_ARRAY,
+    summary: data?.summary || DEFAULT_META_SUMMARY,
     loading,
     loadingInsights,
     loadingMore,
     loadingCreatives,
-    hasMore: {
-      campaigns: data?.pagination.campaigns.hasMore || false,
-      adSets: data?.pagination.adSets.hasMore || false,
-      ads: data?.pagination.ads.hasMore || false,
-    },
+    hasMore,
     error,
     loadMore,
     loadCreatives,

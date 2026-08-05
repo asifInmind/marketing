@@ -13,7 +13,7 @@ interface MetaCampaignTableProps {
   currencyCode?: string;
 }
 
-export function MetaCampaignTable({ 
+export const MetaCampaignTable = React.memo(function MetaCampaignTable({ 
   campaigns, 
   loading, 
   loadingInsights = false, 
@@ -240,4 +240,4 @@ export function MetaCampaignTable({
       </div>
     </div>
   );
-}
+});

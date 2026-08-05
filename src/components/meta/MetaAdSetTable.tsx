@@ -12,7 +12,7 @@ interface MetaAdSetTableProps {
   currencyCode?: string;
 }
 
-export function MetaAdSetTable({ 
+export const MetaAdSetTable = React.memo(function MetaAdSetTable({ 
   adSets, 
   loading, 
   loadingInsights = false,
@@ -140,4 +140,4 @@ export function MetaAdSetTable({
       </div>
     </div>
   );
-}
+});

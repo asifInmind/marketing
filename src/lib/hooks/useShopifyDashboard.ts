@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { ShopifyProduct, ShopifyOrder, ShopifyCredentials, WastedBudgetAlert, ProductPerformance } from '../types/shopify.types';
 import type { TransformedAd } from '../types/meta.types';
 
+const EMPTY_PRODUCTS: ShopifyProduct[] = [];
+const EMPTY_ORDERS: ShopifyOrder[] = [];
+const DEFAULT_SHOPIFY_SUMMARY = { totalRevenue: 0, totalOrders: 0, totalCustomers: 0, currency: 'USD' };
+const EMPTY_ALERTS: WastedBudgetAlert[] = [];
+const EMPTY_PERFORMANCE: ProductPerformance[] = [];
+
 export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
   const [shopifyUrl, setShopifyUrl] = useState<string>('');
   const [shopifyToken, setShopifyToken] = useState<string>('');
@@ -263,7 +269,7 @@ export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
   // 3. Shopify Store Metrics Summary
   const shopifySummary = useMemo(() => {
     if (!isConnected || orders.length === 0) {
-      return { totalRevenue: 0, totalOrders: 0, totalCustomers: 0, currency: 'USD' };
+      return DEFAULT_SHOPIFY_SUMMARY;
     }
 
     const validOrders = orders.filter(o => o.cancelled_at === null);
@@ -282,12 +288,12 @@ export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
     shopifyUrl,
     isConnected,
     loading,
-    products,
-    orders,
+    products: products || EMPTY_PRODUCTS,
+    orders: orders || EMPTY_ORDERS,
     error,
-    wastedBudgetAlerts,
-    productPerformance,
-    shopifySummary,
+    wastedBudgetAlerts: wastedBudgetAlerts || EMPTY_ALERTS,
+    productPerformance: productPerformance || EMPTY_PERFORMANCE,
+    shopifySummary: shopifySummary || DEFAULT_SHOPIFY_SUMMARY,
     nextPageInfo,
     loadingMore,
     connectOauth,
