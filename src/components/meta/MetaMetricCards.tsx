@@ -153,7 +153,7 @@ export function MetaMetricCards({
       <MetricCard
         title="Meta Spend"
         value={formatCurrency(summary?.totalSpend || 0, activeCurrency)}
-        secondaryTitle="Shopify Orders"
+        secondaryTitle="OMS Orders"
         secondaryValue={shopifyConnected ? shopifySummary?.totalOrders : undefined}
         icon={DollarSign}
         color="bg-emerald-500"

@@ -177,6 +177,7 @@ export interface ShopifyOrder {
   total_weight: number;
   updated_at: string;
   user_id: number | null;
+  brand?: string | null;
   line_items: ShopifyOrderLineItem[];
   customer: {
     id: number;

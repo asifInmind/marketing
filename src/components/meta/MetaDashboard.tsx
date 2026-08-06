@@ -226,7 +226,7 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
               {isShopifyConnected ? (
                 <div className="flex items-center gap-2 bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 px-3 py-1.5 rounded-lg border border-emerald-500/20 text-sm">
                   <ShoppingBag className="w-4 h-4 text-emerald-500" />
-                  <span className="font-semibold hidden md:inline">Shopify Synced</span>
+                  <span className="font-semibold hidden md:inline">Shopify Synced (via inMind)</span>
                   <button
                     onClick={disconnectShopify}
                     className="text-xs hover:text-emerald-950 dark:hover:text-white underline ml-1 cursor-pointer"
@@ -240,7 +240,7 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                   className="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg text-sm transition-colors border border-slate-200 dark:border-slate-700 cursor-pointer"
                 >
                   <ShoppingBag className="w-4 h-4 text-slate-400" />
-                  <span>Sync Shopify</span>
+                  <span>Sync Shopify via inMind</span>
                 </button>
               )}
 
@@ -307,7 +307,7 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                   <div>
                     <h3 className="font-semibold text-red-800 dark:text-red-400">Wasted Ad Budget: Out-of-Stock Products</h3>
                     <p className="text-xs text-red-600 dark:text-red-500">
-                      You are actively spending marketing budget on Meta Ads for products that are currently sold out on Shopify.
+                      You are actively spending marketing budget on Meta Ads for products that are currently sold out on your Shopify store (synced via inMind).
                     </p>
                   </div>
                 </div>
@@ -404,7 +404,7 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                     : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                     }`}
                 >
-                  Shopify Products
+                  Shopify Catalog
                   {isShopifyConnected && (
                     <span className="ml-2 text-xs bg-emerald-100 dark:bg-emerald-800/40 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 rounded-full">
                       {shopifyProducts.length}
@@ -477,9 +477,13 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                         <ShoppingBag className="w-5 h-5 text-emerald-500" />
                         Shopify Catalog Performance
                       </h3>
+                      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                        Synchronized via inMind OMS
+                      </p>
 
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
+
                       {/* Filter 1: Scope */}
                       <div className="relative">
                         <select
@@ -529,14 +533,14 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                       <div>
                         <h3 className="font-semibold text-slate-900 dark:text-white text-base">Shopify Not Synced</h3>
                         <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1">
-                          Connect your Shopify store to correlate product sales with Meta ad campaigns and analyze your actual product margins.
+                          Connect your inMind account to import your Shopify products and order history, then correlate them with Meta Ads.
                         </p>
                       </div>
                       <button
                         onClick={() => setIsShopifyModalOpen(true)}
                         className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-medium text-sm rounded-xl transition-all shadow-md shadow-emerald-500/10 cursor-pointer"
                       >
-                        Connect Shopify Store
+                        Connect inMind
                       </button>
                     </div>
                   ) : shopifyLoading ? (
@@ -548,7 +552,7 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                     <div className="p-12 text-center space-y-4">
                       <div className="text-red-500 text-3xl">⚠️</div>
                       <div>
-                        <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Failed to sync with Shopify</h4>
+                        <h4 className="font-semibold text-slate-900 dark:text-white text-sm">Failed to sync with inMind</h4>
                         <p className="text-xs text-red-500 mt-1 max-w-sm mx-auto">{shopifyError}</p>
                       </div>
                       <button
@@ -637,7 +641,7 @@ export function MetaDashboard({ accessToken, accountId }: MetaDashboardProps) {
                   )}
                 </div>
 
-                {isShopifyConnected && !shopifyLoading && !shopifyError && (
+                {isShopifyConnected && !shopifyLoading && !shopifyError && filteredAndSortedProducts.length > 0 && (
                   <MetaLoadMoreButton
                     hasMore={!!shopifyNextPageInfo}
                     loading={shopifyLoadingMore}

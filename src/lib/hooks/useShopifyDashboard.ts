@@ -1,17 +1,16 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import type { ShopifyProduct, ShopifyOrder, ShopifyCredentials, WastedBudgetAlert, ProductPerformance } from '../types/shopify.types';
+import type { ShopifyProduct, ShopifyOrder, WastedBudgetAlert, ProductPerformance } from '../types/shopify.types';
 import type { TransformedAd } from '../types/meta.types';
 
 const EMPTY_PRODUCTS: ShopifyProduct[] = [];
 const EMPTY_ORDERS: ShopifyOrder[] = [];
-const DEFAULT_SHOPIFY_SUMMARY = { totalRevenue: 0, totalOrders: 0, totalCustomers: 0, currency: 'USD' };
+const DEFAULT_SHOPIFY_SUMMARY = { totalRevenue: 0, totalOrders: 0, totalCustomers: 0, currency: 'PKR' };
 const EMPTY_ALERTS: WastedBudgetAlert[] = [];
 const EMPTY_PERFORMANCE: ProductPerformance[] = [];
 
 export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
-  const [shopifyUrl, setShopifyUrl] = useState<string>('');
   const [shopifyToken, setShopifyToken] = useState<string>('');
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
@@ -25,49 +24,62 @@ export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
 
   // Load credentials from localStorage on mount
   useEffect(() => {
-    const storedUrl = localStorage.getItem('shopifyStoreUrl');
-    const storedToken = localStorage.getItem('shopifyAccessToken');
-    if (storedUrl && storedToken) {
-      setShopifyUrl(storedUrl);
-      setShopifyToken(storedToken);
+    let storedToken = localStorage.getItem('omsToken') || localStorage.getItem('token') || localStorage.getItem('shopifyAccessToken');
+    if (storedToken) {
+      // If the token starts with "Bearer ", strip it to extract the raw JWT token
+      if (storedToken.startsWith('Bearer ')) {
+        storedToken = storedToken.substring(7);
+      }
+      setShopifyToken(storedToken.trim());
       setIsConnected(true);
     }
   }, []);
 
   // Fetch data from Next.js server-side API proxy
-  const fetchShopifyData = useCallback(async (urlStr = shopifyUrl, tokenStr = shopifyToken) => {
-    if (!urlStr || !tokenStr) return;
+  const fetchShopifyData = useCallback(async (tokenStr = shopifyToken) => {
+    if (!tokenStr) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/shopify?limit=50&shopify_url=${encodeURIComponent(urlStr)}&shopify_token=${encodeURIComponent(tokenStr)}`);
-      if (!res.ok) {
-        throw new Error(`Failed to fetch Shopify data: ${res.statusText}`);
+      console.log("[OMS Dashboard Hook] Fetching OMS products and orders in parallel...");
+      const [prodRes, orderRes] = await Promise.all([
+        fetch(`/api/oms?type=products&oms_token=${encodeURIComponent(tokenStr)}&limit=50`),
+        fetch(`/api/oms?type=orders&oms_token=${encodeURIComponent(tokenStr)}&limit=100`)
+      ]);
+
+      if (!prodRes.ok) {
+        throw new Error(`Products sync failed: ${prodRes.statusText}`);
       }
-      const data = await res.json();
-      if (data.error) {
-        throw new Error(data.error);
+      if (!orderRes.ok) {
+        throw new Error(`Orders sync failed: ${orderRes.statusText}`);
       }
-      setProducts(data.products || []);
-      setOrders(data.orders || []);
-      setNextPageInfo(data.nextPageInfo || null);
+
+      const prodData = await prodRes.json();
+      const orderData = await orderRes.json();
+
+      if (prodData.error) throw new Error(prodData.error);
+      if (orderData.error) throw new Error(orderData.error);
+
+      setProducts(prodData.products || []);
+      setOrders(orderData.orders || []);
+      setNextPageInfo(prodData.nextPageInfo || null);
     } catch (err: any) {
-      setError(err.message || 'An error occurred while loading Shopify data.');
+      console.error("[OMS Dashboard Hook Error]", err);
+      setError(err.message || 'An error occurred while loading data from the OMS.');
     } finally {
       setLoading(false);
     }
-  }, [shopifyUrl, shopifyToken]);
+  }, [shopifyToken]);
 
   // Load more products for pagination
   const loadMoreProducts = useCallback(async () => {
-    if (!shopifyUrl || !shopifyToken || !nextPageInfo || loadingMore) return;
+    if (!shopifyToken || !nextPageInfo || loadingMore) return;
     setLoadingMore(true);
     try {
       const res = await fetch(
-        `/api/shopify?type=products&limit=50` +
-        `&shopify_url=${encodeURIComponent(shopifyUrl)}` +
-        `&shopify_token=${encodeURIComponent(shopifyToken)}` +
-        `&page_info=${encodeURIComponent(nextPageInfo)}`
+        `/api/oms?type=products&limit=50` +
+        `&oms_token=${encodeURIComponent(shopifyToken)}` +
+        `&page=${encodeURIComponent(nextPageInfo)}`
       );
       if (!res.ok) {
         throw new Error(`Failed to load more products: ${res.statusText}`);
@@ -83,41 +95,38 @@ export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
     } finally {
       setLoadingMore(false);
     }
-  }, [shopifyUrl, shopifyToken, nextPageInfo, loadingMore]);
+  }, [shopifyToken, nextPageInfo, loadingMore]);
 
   // Trigger fetch if credentials exist
   useEffect(() => {
-    if (isConnected && shopifyUrl && shopifyToken) {
+    if (isConnected && shopifyToken) {
       fetchShopifyData();
     }
-  }, [isConnected, shopifyUrl, shopifyToken, fetchShopifyData]);
+  }, [isConnected, shopifyToken, fetchShopifyData]);
 
-  // Connect automatically using Shopify OAuth redirection
+  // Connect automatically using Shopify OAuth redirection (DEPRECATED for OMS, stubbed out to prevent crashes)
   const connectOauth = useCallback((shopUrl: string, actId: string, fbToken: string) => {
-    const cleanShop = shopUrl.replace(/^(https?:\/\/)?/, '').trim();
-    if (!cleanShop) return;
-
-    const stateObj = { actId, fbToken };
-    const state = encodeURIComponent(JSON.stringify(stateObj));
-
-    window.location.href = `/api/shopify/login?shop=${cleanShop}&state=${state}`;
+    console.warn("connectOauth is deprecated and has no effect with OMS.");
   }, []);
 
-  // Connect manually with store URL and admin access token
-  const connectManual = useCallback((shopUrl: string, token: string) => {
-    const cleanShop = shopUrl.replace(/^(https?:\/\/)?/, '').trim();
-    localStorage.setItem('shopifyStoreUrl', cleanShop);
-    localStorage.setItem('shopifyAccessToken', token);
-    setShopifyUrl(cleanShop);
-    setShopifyToken(token);
+  // Connect manually with store URL (optional) and admin access token
+  const connectManual = useCallback((shopUrlOrToken: string, tokenParam?: string) => {
+    // If two parameters are passed, use the second as the token (for backward compatibility).
+    // Otherwise, use the first parameter as the token.
+    const token = tokenParam ? tokenParam : shopUrlOrToken;
+    const cleanToken = token.trim();
+
+    localStorage.setItem('omsToken', cleanToken);
+    setShopifyToken(cleanToken);
     setIsConnected(true);
   }, []);
 
   // Disconnect and wipe localStorage keys
   const disconnect = useCallback(() => {
+    localStorage.removeItem('omsToken');
+    localStorage.removeItem('token');
     localStorage.removeItem('shopifyStoreUrl');
     localStorage.removeItem('shopifyAccessToken');
-    setShopifyUrl('');
     setShopifyToken('');
     setProducts([]);
     setOrders([]);
@@ -126,7 +135,7 @@ export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
     setError(null);
   }, []);
 
-  // Helper function to match Meta Ad to a Shopify Product
+  // Helper function to match Meta Ad to a Product
   const matchAdToProduct = useCallback((ad: TransformedAd, shopifyProducts: ShopifyProduct[]): ShopifyProduct | null => {
     const url = (ad.finalUrl || ad.creative?.url_tags || '').toLowerCase();
     
@@ -266,7 +275,7 @@ export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
     });
   }, [isConnected, products, orders, metaAds, matchAdToProduct]);
 
-  // 3. Shopify Store Metrics Summary
+  // 3. Store Metrics Summary
   const shopifySummary = useMemo(() => {
     if (!isConnected || orders.length === 0) {
       return DEFAULT_SHOPIFY_SUMMARY;
@@ -279,13 +288,13 @@ export function useShopifyDashboard(metaAds: TransformedAd[] = []) {
     const uniqueEmails = new Set(validOrders.map(o => o.email).filter(Boolean));
     const totalCustomers = uniqueEmails.size;
     
-    const currency = validOrders[0]?.currency || 'USD';
+    const currency = validOrders[0]?.currency || 'PKR';
 
     return { totalRevenue, totalOrders, totalCustomers, currency };
   }, [isConnected, orders]);
 
   return {
-    shopifyUrl,
+    shopifyUrl: "OMS",
     isConnected,
     loading,
     products: products || EMPTY_PRODUCTS,

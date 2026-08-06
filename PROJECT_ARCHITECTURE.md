@@ -6,7 +6,7 @@ This document provides a comprehensive, end-to-end documentation of the AdManage
 
 ## 1. High-Level Architecture Overview
 
-AdManager is a Next.js (App Router) SaaS application built to aggregate Meta Ads statistics and correlate them with live Shopify store inventory and orders. The app is completely **serverless and database-free**—all merchant credentials and session configurations are persisted directly in the client's browser using `localStorage`.
+AdManager is a Next.js (App Router) SaaS application built to aggregate Meta Ads statistics and correlate them with live Shopify store inventory and orders via the **inMind OMS API**. The app is completely **serverless and database-free** on the frontend—all merchant credentials and session configurations are persisted directly in the client's browser using `localStorage`.
 
 ```
                         ┌─────────────────────────────────┐
@@ -14,19 +14,21 @@ AdManager is a Next.js (App Router) SaaS application built to aggregate Meta Ads
                         └──────┬───────────────────▲──────┘
                                │                   │
                      Facebook  │                   │  API Proxy
-                    OAuth Flow │                   │  Requests
+                     OAuth /   │                   │  Requests
+                     JWT Token │                   │  
                                ▼                   │
-                  ┌─────────────────────────────┐  │
-                  │   Meta Ads / Shopify APIs   │  │
-                  └────────────▲────────────────┘  │
+                   ┌─────────────────────────────┐  │
+                   │    Meta Ads / inMind APIs   │  │
+                   └────────────▲────────────────┘  │
                                │                   │
                                │ Backend           │
                                │ Outbound          │
+                               │ Requests          │
                                ▼                   │
-                    ┌──────────────────────────────┴┐
-                    │    Next.js serverless API     │
-                    │   (routes: /api/meta, etc.)   │
-                    └───────────────────────────────┘
+                     ┌──────────────────────────────┴┐
+                     │    Next.js serverless API     │
+                     │  (routes: /api/meta, /api/oms)│
+                     └───────────────────────────────┘
 ```
 
 ---
@@ -61,7 +63,7 @@ sequenceDiagram
   * `business_management`: To navigate corporate Business Managers.
   * `pages_read_engagement`: To fetch linked business assets.
 * **Callback Endpoint**: **[Facebook-callback/route.ts](file:///e:/Office%20Projects/admanager/src/app/api/Facebook-callback/route.ts)**
-  Exchanges the temporary `code` for a long-lived User Access Token. It fetches the default account ID and redirects the merchant to the selection page: `/choice`.
+  Exchanges the temporary `code` for a long-lived User Access Token. It fetches the default ad account and redirects the merchant to the selection page: `/choice`.
 
 ### Flow B: Developer Token Input (Manual)
 * For development, testing, or custom accounts, the user enters:
@@ -83,7 +85,7 @@ Once authenticated, the merchant lands on **[choice/page.tsx](file:///e:/Office%
 
 ## 4. Phase 3: Dashboard Assembly (`/choice/[accountID]`)
 
-The folder **[choice/[accountID]/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/choice/[accountID]/page.tsx)** serves as the main dashboard wrapper. It loads **[MetaDashboard.tsx](file:///e:/Office%20Projects/admanager/src/components/meta/MetaDashboard.tsx)** which initializes two data engines:
+The folder **[choice/[accountID]/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/choice/%5BaccountID%5D/page.tsx)** serves as the main dashboard wrapper. It loads **[MetaDashboard.tsx](file:///e:/Office%20Projects/admanager/src/components/meta/MetaDashboard.tsx)** which initializes two data engines:
 
 ### 1. Meta Ads Analytics Engine (`useMetaDashboard.ts`)
 Queries the API proxy route `/api/meta` to fetch and parse:
@@ -93,22 +95,24 @@ Queries the API proxy route `/api/meta` to fetch and parse:
 * **Insights**: Attributed sales, impressions, clicks.
 * Supports **progressive page loading** (limit 50 per page + cursor pagination) to optimize dashboard speed.
 
-### 2. Shopify E-Commerce Engine (`useShopifyDashboard.ts`)
-Manages store synchronization via OAuth redirects or manual Admin API keys (`shpat_...`):
-* Fetches Shopify Products (50 items limit with dynamic Link-header pagination).
-* Fetches the last 250 orders to attribute revenue and calculate sales quantities.
-* Automatically stores credentials in `localStorage` for automatic logins on subsequent visits.
+### 2. inMind OMS E-Commerce Engine (`useShopifyDashboard.ts`)
+Manages store synchronization via your inMind OMS credentials:
+* Swaps standard Shopify direct OAuth with an **inMind Authorization Token** input.
+* Performs parallel requests to the local proxy route `/api/oms` to retrieve:
+  * **Products**: Fetches active product list from inMind OMS endpoints (`/api/v1/products`).
+  * **Orders**: Fetches customer order history from inMind OMS history endpoints (`/api/v1/orders/history`), capped at a maximum of `100` orders to satisfy validation limits.
+* Automatically stores credentials in `localStorage` as `omsToken` for persistence.
 
 ---
 
-## 5. Phase 4: Dynamic Shopify Correlative Analysis
+## 5. Phase 4: Dynamic E-Commerce Correlative Analysis via inMind
 
-Once both sources (Meta + Shopify) are connected, the dashboard enables advanced features:
+Once both sources (Meta + inMind) are connected, the dashboard enables advanced features:
 
 ```mermaid
 graph TD
     A[Meta Ad finalUrl / adName / SKU] --> B{Attr Engine}
-    C[Shopify Product Handle / Title / SKU] --> B
+    C[Shopify Product via inMind Handle / Title / SKU] --> B
     B -->|Match Found| D[Calculate Attributed Spend]
     B -->|Match Found| E[Calculate Store Orders & Sales]
     D & E --> F[Calculate True Product ROAS & MER]
@@ -116,27 +120,27 @@ graph TD
 ```
 
 ### 1. Multi-Tier Product Matching
-To link an active Facebook Ad to a Shopify Product listing, the matching engine runs:
-* **Level 1: URL Handle Extraction**: Extracts `/products/{handle}` out of the ad's landing page URL (e.g. `finalUrl` or `url_tags`) and checks it against the Shopify Product handle.
-* **Level 2: Variant SKU Match**: Searches the ad name for any Shopify Variant SKU code (e.g., `COZY-BLK-MD`).
+To link an active Facebook Ad to a Shopify Product listing synced through inMind, the matching engine runs:
+* **Level 1: URL Handle Extraction**: Extracts `/products/{handle}` out of the ad's landing page URL (e.g. `finalUrl` or `url_tags`) and checks it against the Product handle.
+* **Level 2: Variant SKU Match**: Searches the ad name for any product variant SKU code (e.g., `ZAW3391`).
 * **Level 3: Title Match**: Checks if the ad name contains the exact product title.
 
 ### 2. Wasted Budget Alerts
-If a Meta Ad's effective status is `ACTIVE` and has spend $> 0$, but the matched Shopify Product has **0 total stock** in inventory, it triggers an alert panel. The panel highlights the exact amount of budget wasted driving traffic to a sold-out item.
+If a Meta Ad's effective status is `ACTIVE` and has spend $> 0$, but the matched Product has **0 total stock** in your inMind catalog, it triggers an alert panel. The panel highlights the exact amount of budget wasted driving traffic to a sold-out item.
 
 ### 3. Dynamic Currency Localization
-1. The app extracts the store currency code from the Shopify orders payload (e.g., `PKR`, `USD`, `EUR`).
-2. If Shopify is connected, the app unifies the dashboard currency, formatting both Meta Spend/Revenue and Shopify Revenue values using the browser's dynamic localization formatter:
+1. The app extracts the store currency code from the inMind orders payload (e.g., `PKR`, `USD`, `EUR`).
+2. If inMind is connected, the app unifies the dashboard currency, formatting both Meta Spend/Revenue and Store Revenue values using the browser's dynamic localization formatter:
    ```typescript
    new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode })
    ```
 3. If a merchant's store is in **PKR**, all dollar values are automatically converted to PKR formats (e.g., **`₨1,365.00`**).
 
 ### 4. Side-by-Side Performance Comparison (Double-Row Grid)
-* **Single Row Layout (Shopify Disconnected)**: Renders a simple, single row of 6 columns displaying standard Meta Ads data.
-* **Double Row Layout (Shopify Connected)**: Automatically splits into two rows of 3 columns (`grid-cols-3`), enlarging the cards to show Meta and Shopify statistics side-by-side:
-  * **Spend vs. Shopify Orders**
-  * **Clicks vs. Shopify Customers** (Traffic vs. Buyers)
+* **Single Row Layout (Disconnected)**: Renders a simple, single row of 6 columns displaying standard Meta Ads data.
+* **Double Row Layout (Connected)**: Automatically splits into two rows of 3 columns (`grid-cols-3`), enlarging the cards to show Meta and Store statistics side-by-side:
+  * **Spend vs. Store Orders**
+  * **Clicks vs. Store Customers** (Traffic vs. Buyers)
   * **Ad Impressions** (Reach)
   * **Ad Conversions vs. Store Orders**
   * **Ad Revenue vs. Banked Cash Revenue**
@@ -144,29 +148,25 @@ If a Meta Ad's effective status is `ACTIVE` and has spend $> 0$, but the matched
 
 ---
 
-## 6. Shopify OAuth Flow (Automatic Connection)
+## 6. inMind OMS Connection Flow
 
-For merchants who want to connect Shopify automatically without generating manual tokens, the app implements a secure OAuth loop:
+Rather than requiring complex Shopify OAuth redirects and custom Partner Portal setups, general clients sync instantly using their active login token:
 
 ```mermaid
 sequenceDiagram
     participant Merchant as Merchant Browser
-    participant App as NextJS Server
-    participant Shopify as Shopify Partner Portal
+    participant App as NextJS Server (Proxy)
+    participant inMind as inMind Railway Server
     
-    Merchant->>App: Submits Store URL + Meta config (to /api/shopify/login)
-    App->>Merchant: Redirects to Shopify Auth screen with scopes & state
-    Merchant->>Shopify: Approves App installation
-    Shopify->>App: Redirects to /api/shopify/callback?code=CODE&state=STATE
-    App->>Shopify: Exchanges CODE for Permanent Store Access Token
-    Shopify->>App: Returns store access token
-    App->>Merchant: Redirects back to Dashboard /choice with query parameters
+    Merchant->>App: Submits JWT Token in Modal
+    App->>inMind: Checks credentials with Bearer Header
+    inMind->>App: Returns brand-specific Products and Orders JSON
+    App->>App: Map OMS Schemas to Frontend Schemas
+    App->>Merchant: Renders sales, catalogs, and ROAS calculations
 ```
 
-* **Login Initiator**: **[shopify/login/route.ts](file:///e:/Office%20Projects/admanager/src/app/api/shopify/login/route.ts)**
-  Constructs the Shopify oauth authorize URL. It passes client id, scopes, and preserves the Facebook `access_token` and `act_id` inside the `state` parameter so the user doesn't lose their Meta session context.
-* **Auth Callback**: **[shopify/callback/route.ts](file:///e:/Office%20Projects/admanager/src/app/api/shopify/callback/route.ts)**
-  Exchanges the authorization code for a persistent Admin access token. Once obtained, it redirects the browser back to the Meta `/choice` configuration dashboard page.
+* **Authentication Endpoint**: **[src/app/api/oms/route.ts](file:///e:/Office%20Projects/admanager/src/app/api/oms/route.ts)**
+  Receives requests from the client hook containing the query parameter `oms_token`. Calls the inMind API using `Authorization: Bearer <TOKEN>`.
 
 ---
 
@@ -184,18 +184,18 @@ Here is a map of the important codebase files:
 
 * **Pages & Routing (`src/app/`)**:
   * [page.tsx](file:///e:/Office%20Projects/admanager/src/app/page.tsx): Main entry point redirecting to the Home Page.
-  * [homePage/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/homePage/page.tsx): Landing panel where users select their Meta and Shopify login mode.
+  * [homePage/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/homePage/page.tsx): Landing panel where users select their Meta login mode.
   * [choice/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/choice/page.tsx): Lists Meta ad accounts retrieved from OAuth.
   * [choice/\[accountID\]/page.tsx](file:///e:/Office%20Projects/admanager/src/app/(pages)/choice/%5BaccountID%5D/page.tsx): The core dashboard routing page.
   * `api/meta/route.ts`: Backend proxy server fetching Meta campaigns, ad sets, and creatives.
-  * `api/shopify/route.ts`: Backend proxy server querying Shopify REST endpoints for orders and inventory.
+  * `api/oms/route.ts`: Backend proxy server querying inMind Railway endpoints for orders and inventory.
 
 * **UI Components (`src/components/`)**:
   * `meta/`: Interactive tables, metrics widgets, detail drill-downs, and skeletal loaders.
-  * `shopify/`: Contains the [ShopifyConnectModal.tsx](file:///e:/Office%20Projects/admanager/src/components/shopify/ShopifyConnectModal.tsx) component.
+  * `shopify/`: Contains the [ShopifyConnectModal.tsx](file:///e:/Office%20Projects/admanager/src/components/shopify/ShopifyConnectModal.tsx) connection component.
 
 * **Business Logic & Libraries (`src/lib/`)**:
-  * `api/`: Outbound handlers communicating with external Graph and Shopify APIs.
+  * `api/`: Outbound handlers communicating with the Meta Graph API.
   * `hooks/`: Custom state hubs (`useMetaDashboard` and `useShopifyDashboard`) doing matches and computing Blended ROAS.
 
 ---
@@ -204,14 +204,5 @@ Here is a map of the important codebase files:
 
 To ensure privacy, ease of setup, and zero cloud hosting costs:
 * **Zero Database**: No database (e.g. Postgres, MongoDB) is used.
-* **Local Storage**: Critical credentials (like the Shopify Store URL and access tokens) are saved strictly inside the visitor's local web browser via `localStorage` (keys: `shopifyStoreUrl` and `shopifyAccessToken`).
+* **Local Storage**: Critical credentials (like the inMind Token) are saved strictly inside the visitor's local web browser via `localStorage` (key: `omsToken`).
 * **Session Passing**: Transient authorization contexts are passed directly through secure query strings between the login loops.
-
----
-
-## 10. Local Environment Configurations
-
-To run the project locally, create a **[.env.local](file:///e:/Office%20Projects/admanager/.env.local)** file in the root directory with the following variables:
-
-
-

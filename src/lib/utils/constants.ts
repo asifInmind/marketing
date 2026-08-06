@@ -13,6 +13,14 @@ export const META_API = {
 } as const;
 
 // ============================================
+// OMS API CONSTANTS
+// ============================================
+
+export const OMS_API = {
+  BASE_URL: process.env.OMS_API_BASE_URL || 'https://test-backend-production-ad06.up.railway.app/api/v1',
+} as const;
+
+// ============================================
 // STATUS MAPPINGS
 // ============================================
 
